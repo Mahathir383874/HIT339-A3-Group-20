@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 using Bibliotheca.Models.Enums;
 
 namespace Bibliotheca.Models.Entities
@@ -44,7 +45,18 @@ namespace Bibliotheca.Models.Entities
         [Display(Name = "Date Added")]
         public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
 
+        /// <summary>Branch that currently holds the item (updated when an inter-branch transfer completes).</summary>
+        [Display(Name = "Branch")]
+        public int? BranchId { get; set; }
+
+        [ForeignKey(nameof(BranchId))]
+        public virtual Branch? Branch { get; set; }
+
         // Navigation property for loan history
         public virtual ICollection<Loan> Loans { get; set; } = new List<Loan>();
+
+        // Holds placed on this item and its inter-branch transfer history
+        public virtual ICollection<Reservation> Reservations { get; set; } = new List<Reservation>();
+        public virtual ICollection<BranchTransfer> Transfers { get; set; } = new List<BranchTransfer>();
     }
 }
