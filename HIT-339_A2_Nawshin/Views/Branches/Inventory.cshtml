@@ -1,0 +1,144 @@
+@model Bibliotheca.Models.ViewModels.BranchInventoryViewModel
+@using Bibliotheca.Models.Enums
+@{
+    ViewData["Title"] = "Branch Inventory";
+    var canTransfer = User.IsInRole("Admin") || User.IsInRole("Reception");
+}
+
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    <div>
+        <span class="badge role-reception mb-1"><i class="bi bi-boxes me-1"></i> Multi-Branch Inventory</span>
+        <h2 class="fw-bold mb-0">Branch Inventory</h2>
+        <p class="text-muted small mb-0">Filter the catalogue by branch to see what each library currently holds.</p>
+    </div>
+    <a asp-action="Index" class="btn btn-outline-custom"><i class="bi bi-building me-1"></i> Branch overview</a>
+</div>
+
+<div class="card-custom p-3 mb-3">
+    <form asp-action="Inventory" method="get" class="row g-2 align-items-end">
+        <div class="col-6 col-md-3">
+            <label class="form-label small mb-1" for="invBranch">Branch</label>
+            <select id="invBranch" name="branchId" class="form-select form-select-sm">
+                <option value="">All branches</option>
+                @foreach (var branch in Model.Branches)
+                {
+                    <option value="@branch.Id" selected="@(Model.BranchId == branch.Id)">@branch.Name</option>
+                }
+            </select>
+        </div>
+        <div class="col-6 col-md-2">
+            <label class="form-label small mb-1" for="invCategory">Type</label>
+            <select id="invCategory" name="category" class="form-select form-select-sm">
+                <option value="All" selected="@(Model.Category == "All")">All types</option>
+                <option value="Book" selected="@(Model.Category == "Book")">Books</option>
+                <option value="Music" selected="@(Model.Category == "Music")">Music</option>
+                <option value="Toy" selected="@(Model.Category == "Toy")">Toys</option>
+            </select>
+        </div>
+        <div class="col-6 col-md-2">
+            <label class="form-label small mb-1" for="invStatus">Status</label>
+            <select id="invStatus" name="status" class="form-select form-select-sm">
+                <option value="">Any status</option>
+                @foreach (var s in Enum.GetValues<ItemStatus>())
+                {
+                    <option value="@s" selected="@(Model.Status == s)">@s</option>
+                }
+            </select>
+        </div>
+        <div class="col-6 col-md-3">
+            <label class="form-label small mb-1" for="invSearch">Search</label>
+            <input id="invSearch" type="text" name="searchTerm" value="@Model.SearchTerm" class="form-control form-control-sm" placeholder="Title, code, author..." />
+        </div>
+        <div class="col-12 col-md-auto d-flex gap-2">
+            <button type="submit" class="btn btn-sm btn-primary-custom"><i class="bi bi-funnel me-1"></i> Filter</button>
+            <a asp-action="Inventory" class="btn btn-sm btn-outline-custom">Clear</a>
+        </div>
+    </form>
+</div>
+
+<div class="small text-muted mb-2">@Model.Items.Count item(s)</div>
+
+<div class="card-custom p-0 overflow-hidden">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Item</th>
+                    <th>Branch</th>
+                    <th>Status</th>
+                    <th>Holds / transfer</th>
+                    @if (canTransfer)
+                    {
+                        <th class="text-end">Actions</th>
+                    }
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Model.Items.Any())
+                {
+                    <tr>
+                        <td colspan="@(canTransfer ? 5 : 4)" class="text-center py-5 text-muted">
+                            <i class="bi bi-boxes fs-2 d-block mb-2"></i>
+                            No items match these filters.
+                        </td>
+                    </tr>
+                }
+                @foreach (var item in Model.Items)
+                {
+                    var lending = Model.LendingStates.TryGetValue(item.Id, out var state) ? state : null;
+                    <tr>
+                        <td>
+                            <a asp-controller="Catalog" asp-action="Details" asp-route-id="@item.Id" class="fw-semibold text-dark text-decoration-none">@item.Name</a>
+                            <div><span class="badge-code">@item.LibraryCode</span> <span class="badge badge-type">@item.ItemType</span></div>
+                        </td>
+                        <td>
+                            @if (item.Branch != null)
+                            {
+                                <span class="badge bg-light text-secondary border"><i class="bi bi-building me-1"></i>@item.Branch.Name</span>
+                            }
+                            else
+                            {
+                                <span class="text-muted small">Not assigned</span>
+                            }
+                        </td>
+                        <td>
+                            @{
+                                var badge = item.Status switch
+                                {
+                                    ItemStatus.Available => "badge-available",
+                                    ItemStatus.Borrowed => "badge-borrowed",
+                                    ItemStatus.Damaged => "badge-damaged",
+                                    _ => "badge-destroyed"
+                                };
+                            }
+                            <span class="badge-status @badge">@item.Status</span>
+                        </td>
+                        <td class="small">
+                            @if (lending != null && lending.InTransfer)
+                            {
+                                <div><i class="bi bi-truck me-1"></i>Transfer to @(lending.TransferDestination ?? "another branch")</div>
+                            }
+                            @if (lending != null && lending.QueueLength > 0)
+                            {
+                                <div><i class="bi bi-bookmark-star me-1"></i>@lending.QueueLength waiting@(lending.OnHoldShelf ? " (on hold shelf)" : "")</div>
+                            }
+                            @if (lending == null || (!lending.InTransfer && lending.QueueLength == 0))
+                            {
+                                <span class="text-muted">-</span>
+                            }
+                        </td>
+                        @if (canTransfer)
+                        {
+                            <td class="text-end">
+                                @if (item.Status != ItemStatus.Borrowed && item.Status != ItemStatus.Destroyed && item.BranchId.HasValue && (lending == null || !lending.InTransfer))
+                                {
+                                    <a asp-controller="Transfers" asp-action="Create" asp-route-itemId="@item.Id" class="btn btn-sm btn-outline-secondary"><i class="bi bi-truck me-1"></i> Transfer</a>
+                                }
+                            </td>
+                        }
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

@@ -1,6 +1,9 @@
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
 using Bibliotheca.Models.Entities;
 using Bibliotheca.Models.Enums;
+using Bibliotheca.Services;
 
 namespace Bibliotheca.Data
 {
@@ -365,6 +368,240 @@ namespace Bibliotheca.Data
 
                 await context.SaveChangesAsync();
             }
+
+            // 6. Seed branches, branch-aware inventory, and demo holds / transfers / notifications
+            await SeedBranchDataAsync(context, userManager, serviceProvider);
+        }
+
+        // ------------------------------------------------------------------
+        // Multi-branch, reservations, transfers and notifications (demo data)
+        // ------------------------------------------------------------------
+        private static async Task SeedBranchDataAsync(ApplicationDbContext context, UserManager<ApplicationUser> userManager, IServiceProvider serviceProvider)
+        {
+            // Runs once: the branch table is empty only on the first start with this schema.
+            if (context.Branches.Any()) return;
+
+            var darwin = new Branch { Name = "Darwin City Library", Code = "DAR", Address = "Bennett Street, Darwin City NT 0800", IsActive = true };
+            var palmerston = new Branch { Name = "Palmerston Library", Code = "PAL", Address = "Chung Wah Terrace, Palmerston NT 0830", IsActive = true };
+            var casuarina = new Branch { Name = "Casuarina Library", Code = "CAS", Address = "Trower Road, Casuarina NT 0810", IsActive = true };
+            context.Branches.AddRange(darwin, palmerston, casuarina);
+            await context.SaveChangesAsync();
+
+            // Which branch holds which seeded item (every item is assigned to exactly one branch)
+            var placement = new Dictionary<string, Branch>
+            {
+                ["BOK-1001"] = darwin, ["BOK-1002"] = darwin, ["BOK-1003"] = palmerston, ["BOK-1004"] = darwin, ["BOK-1005"] = casuarina,
+                ["MUS-2001"] = darwin, ["MUS-2002"] = palmerston, ["MUS-2003"] = casuarina, ["MUS-2004"] = palmerston,
+                ["TOY-3001"] = casuarina, ["TOY-3002"] = darwin, ["TOY-3003"] = palmerston, ["TOY-3004"] = casuarina
+            };
+
+            var items = context.Items.ToList();
+            foreach (var item in items.Where(i => !i.BranchId.HasValue))
+            {
+                item.BranchId = placement.TryGetValue(item.LibraryCode, out var branch) ? branch.Id : darwin.Id;
+            }
+            await context.SaveChangesAsync();
+
+            // Reception and admin desks are at the Darwin City branch
+            foreach (var email in new[] { "admin@bibliotheca.com", "reception@bibliotheca.com" })
+            {
+                var user = await userManager.FindByEmailAsync(email);
+                if (user != null && !user.DeskBranchId.HasValue)
+                {
+                    user.DeskBranchId = darwin.Id;
+                    await userManager.UpdateAsync(user);
+                }
+            }
+
+            var notifications = serviceProvider.GetRequiredService<INotificationService>();
+            var now = DateTime.UtcNow;
+
+            Item? Find(string code) => items.FirstOrDefault(i => i.LibraryCode == code);
+            Borrower? Patron(string card) => context.Borrowers.FirstOrDefault(b => b.CardNumber == card);
+
+            // ---- Transfer history (no transfer is left in progress, so the demo items stay borrowable) ----
+            var nineteen84 = Find("BOK-1005");
+            var abbeyRoad = Find("MUS-2001");
+            if (nineteen84 != null)
+            {
+                context.BranchTransfers.Add(new BranchTransfer
+                {
+                    ItemId = nineteen84.Id,
+                    FromBranchId = palmerston.Id,
+                    ToBranchId = casuarina.Id,
+                    Status = TransferStatus.Completed,
+                    RequestedDate = now.AddDays(-12),
+                    RequestedBy = "Alice Walker (Admin)",
+                    DispatchedDate = now.AddDays(-11),
+                    DispatchedBy = "Bob Taylor (Reception)",
+                    CompletedDate = now.AddDays(-9),
+                    CompletedBy = "Bob Taylor (Reception)",
+                    Notes = "Move to Casuarina where demand is higher."
+                });
+            }
+
+            if (abbeyRoad != null)
+            {
+                context.BranchTransfers.Add(new BranchTransfer
+                {
+                    ItemId = abbeyRoad.Id,
+                    FromBranchId = darwin.Id,
+                    ToBranchId = palmerston.Id,
+                    Status = TransferStatus.Cancelled,
+                    RequestedDate = now.AddDays(-6),
+                    RequestedBy = "Bob Taylor (Reception)",
+                    CancelledDate = now.AddDays(-5),
+                    CancelledBy = "Alice Walker (Admin)",
+                    Notes = "Requested for a display.",
+                    CancelReason = "Display cancelled."
+                });
+            }
+
+            await context.SaveChangesAsync();
+
+            // ---- Holds: a queue on The Hobbit (on loan) and one on the damaged Mockingbird ----
+            var hobbit = Find("BOK-1002");
+            var mockingbird = Find("BOK-1004");
+            var michael = Patron("CRD-1003");
+            var sophia = Patron("CRD-1004");
+
+            var placed = new List<(Reservation Reservation, Borrower Borrower, Item Item, int Position)>();
+            if (hobbit != null && michael != null)
+            {
+                var r = new Reservation { ItemId = hobbit.Id, BorrowerId = michael.Id, Status = ReservationStatus.Waiting, CreatedDate = now.AddDays(-3), PlacedVia = "Kiosk" };
+                context.Reservations.Add(r);
+                await context.SaveChangesAsync();
+                placed.Add((r, michael, hobbit, 1));
+            }
+
+            if (hobbit != null && sophia != null)
+            {
+                var r = new Reservation { ItemId = hobbit.Id, BorrowerId = sophia.Id, Status = ReservationStatus.Waiting, CreatedDate = now.AddDays(-2), PlacedVia = "Reception desk" };
+                context.Reservations.Add(r);
+                await context.SaveChangesAsync();
+                placed.Add((r, sophia, hobbit, 2));
+            }
+
+            if (mockingbird != null && michael != null)
+            {
+                var r = new Reservation { ItemId = mockingbird.Id, BorrowerId = michael.Id, Status = ReservationStatus.Waiting, CreatedDate = now.AddDays(-1), PlacedVia = "Kiosk" };
+                context.Reservations.Add(r);
+                await context.SaveChangesAsync();
+                placed.Add((r, michael, mockingbird, 1));
+            }
+
+            foreach (var entry in placed)
+            {
+                var note = notifications.StageReservationPlaced(entry.Borrower, entry.Item, entry.Reservation, entry.Position);
+                note.CreatedDate = entry.Reservation.CreatedDate;
+            }
+
+            // ---- Notification history for the seeded loans and fine ----
+            var loans = context.Loans.ToList();
+            var emma = Patron("CRD-1002");
+            var kindOfBlue = Find("MUS-2002");
+            if (emma != null && kindOfBlue != null)
+            {
+                var loan = loans.FirstOrDefault(l => l.ItemId == kindOfBlue.Id && l.BorrowerId == emma.Id);
+                if (loan != null)
+                {
+                    var note = notifications.StageBorrowed(emma, kindOfBlue, loan);
+                    note.CreatedDate = loan.BorrowDate;
+                }
+            }
+
+            var paidFine = context.Fines.FirstOrDefault();
+            if (paidFine != null)
+            {
+                var borrower = context.Borrowers.FirstOrDefault(b => b.Id == paidFine.BorrowerId);
+                var loan = loans.FirstOrDefault(l => l.Id == paidFine.LoanId);
+                var item = loan != null ? items.FirstOrDefault(i => i.Id == loan.ItemId) : null;
+                if (borrower != null && loan != null)
+                {
+                    var issued = notifications.StageFineIssued(borrower, item, loan, paidFine);
+                    issued.CreatedDate = paidFine.CreatedDate;
+                    var paid = notifications.StageFinePaid(borrower, item, paidFine);
+                    paid.CreatedDate = paidFine.PaidDate ?? paidFine.CreatedDate;
+                }
+            }
+
+            await context.SaveChangesAsync();
+
+            // Due-date reminders for the seeded loans (David's overdue copy of The Hobbit gets an overdue notice)
+            await notifications.GenerateDueRemindersAsync();
+        }
+
+        // ------------------------------------------------------------------
+        // Schema check for databases created by an earlier version of the project
+        // ------------------------------------------------------------------
+        private static async Task RebuildOutdatedDatabaseAsync(ApplicationDbContext context, IServiceProvider serviceProvider)
+        {
+            string? dataSource = null;
+            try
+            {
+                var connection = context.Database.GetDbConnection();
+                dataSource = connection.DataSource;
+
+                if (string.IsNullOrWhiteSpace(dataSource) || dataSource == ":memory:") return;
+
+                var path = Path.GetFullPath(dataSource);
+                if (!File.Exists(path) || new FileInfo(path).Length == 0) return; // nothing to upgrade
+
+                var opened = false;
+                if (connection.State != System.Data.ConnectionState.Open)
+                {
+                    await connection.OpenAsync();
+                    opened = true;
+                }
+
+                bool outdated;
+                try
+                {
+                    using var command = connection.CreateCommand();
+                    command.CommandText = "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name IN ('Branches', 'Reservations', 'BranchTransfers', 'Notifications')";
+                    var tables = Convert.ToInt32(await command.ExecuteScalarAsync());
+
+                    using var itemsCheck = connection.CreateCommand();
+                    itemsCheck.CommandText = "SELECT COUNT(*) FROM pragma_table_info('Items') WHERE name = 'BranchId'";
+                    var itemColumn = Convert.ToInt32(await itemsCheck.ExecuteScalarAsync());
+
+                    using var usersCheck = connection.CreateCommand();
+                    usersCheck.CommandText = "SELECT COUNT(*) FROM pragma_table_info('AspNetUsers') WHERE name = 'DeskBranchId'";
+                    var userColumn = Convert.ToInt32(await usersCheck.ExecuteScalarAsync());
+
+                    var hasOldTables = await TableExistsAsync(connection, "Items");
+                    outdated = hasOldTables && (tables < 4 || itemColumn == 0 || userColumn == 0);
+                }
+                finally
+                {
+                    if (opened) await connection.CloseAsync();
+                }
+
+                if (!outdated) return;
+
+                await context.Database.CloseConnectionAsync();
+                SqliteConnection.ClearAllPools();
+
+                var backup = path + ".old-" + DateTime.UtcNow.ToString("yyyyMMdd-HHmmss");
+                File.Copy(path, backup, overwrite: false);
+                await context.Database.EnsureDeletedAsync();
+                SqliteConnection.ClearAllPools();
+
+                var logger = serviceProvider.GetService<ILogger<ApplicationDbContext>>();
+                logger?.LogWarning("The existing database used an older schema. It was backed up to {Backup} and will be recreated with the current schema and demo data.", backup);
+            }
+            catch (Exception ex)
+            {
+                var logger = serviceProvider.GetService<ILogger<ApplicationDbContext>>();
+                logger?.LogError(ex, "Could not check the existing database schema ({DataSource}). If pages fail with 'no such table', delete the .db file and restart.", dataSource);
+            }
+        }
+
+        private static async Task<bool> TableExistsAsync(System.Data.Common.DbConnection connection, string table)
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = '" + table + "'";
+            return Convert.ToInt32(await command.ExecuteScalarAsync()) > 0;
         }
 
         private static async Task SeedUserAsync(UserManager<ApplicationUser> userManager, string email, string password, string fullName, string role)
