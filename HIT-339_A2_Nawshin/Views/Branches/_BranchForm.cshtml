@@ -1,0 +1,25 @@
+@model Bibliotheca.Models.Entities.Branch
+<div class="row g-3">
+    <div class="col-12 col-md-8">
+        <label asp-for="Name" class="form-label fw-semibold small"></label>
+        <input asp-for="Name" class="form-control" placeholder="e.g. Darwin City Library" required />
+        <span asp-validation-for="Name" class="text-danger small"></span>
+    </div>
+    <div class="col-12 col-md-4">
+        <label asp-for="Code" class="form-label fw-semibold small"></label>
+        <input asp-for="Code" class="form-control font-monospace text-uppercase" placeholder="e.g. DAR" required />
+        <span asp-validation-for="Code" class="text-danger small"></span>
+    </div>
+    <div class="col-12">
+        <label asp-for="Address" class="form-label fw-semibold small"></label>
+        <input asp-for="Address" class="form-control" placeholder="Street, suburb" />
+        <span asp-validation-for="Address" class="text-danger small"></span>
+    </div>
+    <div class="col-12">
+        <div class="form-check form-switch">
+            <input asp-for="IsActive" class="form-check-input" />
+            <label asp-for="IsActive" class="form-check-label small"></label>
+        </div>
+        <div class="form-text small">Closed branches cannot be chosen as a transfer destination or for new items.</div>
+    </div>
+</div>

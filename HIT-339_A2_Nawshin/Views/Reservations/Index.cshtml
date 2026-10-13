@@ -1,0 +1,137 @@
+@model Bibliotheca.Models.ViewModels.ReservationListViewModel
+@{
+    ViewData["Title"] = "Reservations & Waitlist";
+}
+
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    <div>
+        <span class="badge role-reception mb-1"><i class="bi bi-bookmark-star me-1"></i> Reception Desk</span>
+        <h2 class="fw-bold mb-0">Reservations &amp; Waitlist</h2>
+        <p class="text-muted small mb-0">Holds on items that are on loan, damaged or being transferred. Queue order is first-come, first-served.</p>
+    </div>
+    <a asp-action="Create" class="btn btn-primary-custom"><i class="bi bi-plus-circle me-1"></i> Place a Hold</a>
+</div>
+
+<div class="card-custom p-3 mb-3">
+    <form asp-action="Index" method="get" class="row g-2 align-items-end">
+        <input type="hidden" name="filter" value="@Model.Filter" />
+        <div class="col-12 col-md-6">
+            <div class="input-group input-group-sm">
+                <span class="input-group-text bg-light"><i class="bi bi-search"></i></span>
+                <input type="text" name="searchTerm" value="@Model.SearchTerm" class="form-control" placeholder="Search by item, library code, borrower or card number" />
+                <button type="submit" class="btn btn-primary-custom">Search</button>
+            </div>
+        </div>
+        <div class="col-12 col-md-auto">
+            <div class="btn-group btn-group-sm" role="group" aria-label="Reservation filter">
+                <a asp-action="Index" asp-route-filter="Active" asp-route-searchTerm="@Model.SearchTerm" class="btn @(Model.Filter == "Active" ? "btn-primary-custom" : "btn-outline-custom")">Active</a>
+                <a asp-action="Index" asp-route-filter="History" asp-route-searchTerm="@Model.SearchTerm" class="btn @(Model.Filter == "History" ? "btn-primary-custom" : "btn-outline-custom")">History</a>
+                <a asp-action="Index" asp-route-filter="All" asp-route-searchTerm="@Model.SearchTerm" class="btn @(Model.Filter == "All" ? "btn-primary-custom" : "btn-outline-custom")">All</a>
+            </div>
+        </div>
+    </form>
+</div>
+
+<div class="card-custom p-0 overflow-hidden">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Item</th>
+                    <th>Borrower</th>
+                    <th>Queue</th>
+                    <th>Status</th>
+                    <th>Placed</th>
+                    <th>Branch</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Model.Rows.Any())
+                {
+                    <tr>
+                        <td colspan="7" class="text-center py-5 text-muted">
+                            <i class="bi bi-bookmark fs-2 d-block mb-2"></i>
+                            No reservations match this view.
+                        </td>
+                    </tr>
+                }
+                @foreach (var r in Model.Rows)
+                {
+                    <tr>
+                        <td>
+                            <a asp-controller="Items" asp-action="Details" asp-route-id="@r.ItemId" class="fw-semibold text-dark text-decoration-none">@r.ItemName</a>
+                            <div><span class="badge-code">@r.LibraryCode</span> <span class="badge badge-type">@r.ItemType</span></div>
+                        </td>
+                        <td>
+                            <div class="fw-semibold">@r.BorrowerName</div>
+                            <div class="small text-muted font-monospace">@r.CardNumber</div>
+                        </td>
+                        <td>
+                            @if (r.QueuePosition.HasValue)
+                            {
+                                <span class="badge bg-dark">#@r.QueuePosition</span>
+                            }
+                            else
+                            {
+                                <span class="text-muted">-</span>
+                            }
+                        </td>
+                        <td>
+                            @switch (r.Status)
+                            {
+                                case Bibliotheca.Models.Enums.ReservationStatus.Ready:
+                                    <span class="badge bg-success">Ready for pickup</span>
+                                    @if (r.ReadyDate.HasValue)
+                                    {
+                                        <div class="small text-muted">since @r.ReadyDate.Value.ToString("d MMM yyyy")</div>
+                                    }
+                                    break;
+                                case Bibliotheca.Models.Enums.ReservationStatus.Waiting:
+                                    <span class="badge bg-secondary">Waiting</span>
+                                    break;
+                                case Bibliotheca.Models.Enums.ReservationStatus.Fulfilled:
+                                    <span class="badge bg-primary">Fulfilled</span>
+                                    @if (r.FulfilledDate.HasValue)
+                                    {
+                                        <div class="small text-muted">@r.FulfilledDate.Value.ToString("d MMM yyyy")</div>
+                                    }
+                                    break;
+                                default:
+                                    <span class="badge bg-light text-secondary border">Cancelled</span>
+                                    @if (!string.IsNullOrEmpty(r.CancelReason))
+                                    {
+                                        <div class="small text-muted">@r.CancelReason</div>
+                                    }
+                                    break;
+                            }
+                        </td>
+                        <td>
+                            <div>@r.CreatedDate.ToString("d MMM yyyy")</div>
+                            <div class="small text-muted">@r.PlacedVia</div>
+                        </td>
+                        <td>
+                            @if (r.Status == Bibliotheca.Models.Enums.ReservationStatus.Ready)
+                            {
+                                <span class="small"><i class="bi bi-geo-alt me-1"></i>Pick up: @(r.PickupBranch ?? r.CurrentBranch ?? "-")</span>
+                            }
+                            else
+                            {
+                                <span class="small text-muted"><i class="bi bi-building me-1"></i>@(r.CurrentBranch ?? "-")</span>
+                            }
+                        </td>
+                        <td class="text-end">
+                            @if (r.IsActive)
+                            {
+                                <form asp-action="Cancel" asp-route-id="@r.Id" method="post" class="d-inline"
+                                      onsubmit="return confirm('Cancel this reservation?');">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-x-circle me-1"></i> Cancel</button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
