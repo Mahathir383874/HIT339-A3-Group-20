@@ -1,0 +1,81 @@
+@model Bibliotheca.Models.ViewModels.PlaceHoldViewModel
+@{
+    ViewData["Title"] = "Place a Hold";
+}
+
+<div class="row justify-content-center py-3">
+    <div class="col-12 col-lg-8">
+        <div class="card-custom p-4 p-md-5 shadow-sm">
+            <div class="d-flex align-items-center justify-content-between border-bottom pb-3 mb-4">
+                <div>
+                    <span class="badge role-reception fw-bold text-uppercase px-2 py-1 mb-1">
+                        <i class="bi bi-bookmark-star me-1"></i> Reception Desk
+                    </span>
+                    <h3 class="fw-bold mb-0">Place a Hold</h3>
+                </div>
+                <a asp-action="Index" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i> Back to Reservations
+                </a>
+            </div>
+
+            <p class="text-muted small">
+                A hold can be placed on an item that cannot be borrowed right now (on loan, damaged, on another patron's hold, or being transferred).
+                The patron joins the end of the queue and is notified when the item is ready.
+            </p>
+
+            <form asp-action="Create" method="post">
+                @Html.AntiForgeryToken()
+                <div asp-validation-summary="ModelOnly" class="alert alert-danger py-2 small mb-3"></div>
+
+                <div class="row g-3">
+                    <div class="col-12 col-md-6">
+                        <label asp-for="CardNumber" class="form-label fw-semibold small"></label>
+                        <input asp-for="CardNumber" id="holdCardInput" class="form-control font-monospace" placeholder="e.g. CRD-1001" required />
+                        <span asp-validation-for="CardNumber" class="text-danger small"></span>
+                        @if (Model.ActiveBorrowers.Any())
+                        {
+                            <div class="mt-1">
+                                <label class="text-muted small">Or select existing patron:</label>
+                                <select class="form-select form-select-sm" onchange="document.getElementById('holdCardInput').value = this.value">
+                                    <option value="">-- Choose Patron --</option>
+                                    @foreach (var b in Model.ActiveBorrowers)
+                                    {
+                                        <option value="@b.CardNumber">@b.FullName (@b.CardNumber)</option>
+                                    }
+                                </select>
+                            </div>
+                        }
+                    </div>
+
+                    <div class="col-12 col-md-6">
+                        <label asp-for="LibraryCode" class="form-label fw-semibold small"></label>
+                        <input asp-for="LibraryCode" id="holdCodeInput" class="form-control font-monospace" placeholder="e.g. BOK-1002" required />
+                        <span asp-validation-for="LibraryCode" class="text-danger small"></span>
+                        @if (Model.HoldableItems.Any())
+                        {
+                            <div class="mt-1">
+                                <label class="text-muted small">Or select a catalog item:</label>
+                                <select class="form-select form-select-sm" onchange="document.getElementById('holdCodeInput').value = this.value">
+                                    <option value="">-- Choose Item --</option>
+                                    @foreach (var item in Model.HoldableItems)
+                                    {
+                                        <option value="@item.LibraryCode">[@item.LibraryCode] @item.Name - @item.Status</option>
+                                    }
+                                </select>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+                    <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+                    <button type="submit" class="btn btn-primary-custom"><i class="bi bi-bookmark-plus me-1"></i> Place Hold</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
