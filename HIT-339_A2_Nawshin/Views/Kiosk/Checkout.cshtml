@@ -60,6 +60,16 @@
                     <a asp-action="Checkout" class="kiosk-btn kiosk-btn-outline kiosk-btn-lg">Cancel</a>
                 </form>
             }
+            else if (Model.CanOfferHold)
+            {
+                <p class="kiosk-help">Place a hold and we'll add you to the queue for this item. You will see your position on your account page and get a message when it is ready.</p>
+                <form asp-action="PlaceHold" method="post" class="kiosk-actions-row">
+                    <input type="hidden" name="code" value="@item.LibraryCode" />
+                    <button type="submit" class="kiosk-btn kiosk-btn-primary kiosk-btn-lg" data-once>
+                        <i class="bi bi-bookmark-star" aria-hidden="true"></i> Place a hold
+                    </button>
+                </form>
+            }
         </section>
     }
 

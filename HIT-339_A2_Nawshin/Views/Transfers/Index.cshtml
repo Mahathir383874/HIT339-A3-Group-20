@@ -1,0 +1,127 @@
+@model Bibliotheca.Models.ViewModels.TransferListViewModel
+@using Bibliotheca.Models.Enums
+@{
+    ViewData["Title"] = "Branch Transfers";
+    var canManage = User.IsInRole("Admin") || User.IsInRole("Reception");
+}
+
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    <div>
+        <span class="badge role-reception mb-1"><i class="bi bi-truck me-1"></i> Multi-Branch Inventory</span>
+        <h2 class="fw-bold mb-0">Inter-Branch Transfers</h2>
+        <p class="text-muted small mb-0">Requested &rarr; In transit &rarr; Completed. Every step is recorded, and the item moves to the destination branch only when the transfer is completed.</p>
+    </div>
+    @if (canManage)
+    {
+        <a asp-action="Create" class="btn btn-primary-custom"><i class="bi bi-plus-circle me-1"></i> New Transfer</a>
+    }
+</div>
+
+<div class="card-custom p-3 mb-3">
+    <form asp-action="Index" method="get" class="row g-2 align-items-end">
+        <input type="hidden" name="filter" value="@Model.Filter" />
+        <div class="col-12 col-md-4">
+            <select name="branchId" class="form-select form-select-sm" aria-label="Filter by branch" onchange="this.form.submit()">
+                <option value="">All branches</option>
+                @foreach (var branch in Model.Branches)
+                {
+                    <option value="@branch.Id" selected="@(Model.BranchId == branch.Id)">@branch.Name</option>
+                }
+            </select>
+        </div>
+        <div class="col-12 col-md-auto">
+            <div class="btn-group btn-group-sm" role="group" aria-label="Transfer filter">
+                <a asp-action="Index" asp-route-filter="Active" asp-route-branchId="@Model.BranchId" class="btn @(Model.Filter == "Active" ? "btn-primary-custom" : "btn-outline-custom")">In progress</a>
+                <a asp-action="Index" asp-route-filter="Completed" asp-route-branchId="@Model.BranchId" class="btn @(Model.Filter == "Completed" ? "btn-primary-custom" : "btn-outline-custom")">Completed</a>
+                <a asp-action="Index" asp-route-filter="Cancelled" asp-route-branchId="@Model.BranchId" class="btn @(Model.Filter == "Cancelled" ? "btn-primary-custom" : "btn-outline-custom")">Cancelled</a>
+                <a asp-action="Index" asp-route-filter="All" asp-route-branchId="@Model.BranchId" class="btn @(Model.Filter == "All" ? "btn-primary-custom" : "btn-outline-custom")">All history</a>
+            </div>
+        </div>
+    </form>
+</div>
+
+<div class="card-custom p-0 overflow-hidden">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>#</th>
+                    <th>Item</th>
+                    <th>From &rarr; To</th>
+                    <th>Status</th>
+                    <th>Requested</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Model.Transfers.Any())
+                {
+                    <tr>
+                        <td colspan="6" class="text-center py-5 text-muted">
+                            <i class="bi bi-truck fs-2 d-block mb-2"></i>
+                            No transfers match this view.
+                        </td>
+                    </tr>
+                }
+                @foreach (var t in Model.Transfers)
+                {
+                    <tr>
+                        <td class="fw-semibold">@t.Id</td>
+                        <td>
+                            <a asp-controller="Items" asp-action="Details" asp-route-id="@t.ItemId" class="fw-semibold text-dark text-decoration-none">@(t.Item?.Name ?? "(item removed)")</a>
+                            <div><span class="badge-code">@t.Item?.LibraryCode</span></div>
+                        </td>
+                        <td>
+                            <i class="bi bi-building me-1 text-muted"></i>@t.FromBranch?.Name
+                            <i class="bi bi-arrow-right mx-1"></i>
+                            <i class="bi bi-building me-1 text-muted"></i>@t.ToBranch?.Name
+                        </td>
+                        <td>
+                            @switch (t.Status)
+                            {
+                                case TransferStatus.Requested:
+                                    <span class="badge bg-primary">Requested</span>
+                                    break;
+                                case TransferStatus.InTransit:
+                                    <span class="badge bg-warning text-dark">In transit</span>
+                                    break;
+                                case TransferStatus.Completed:
+                                    <span class="badge bg-success">Completed</span>
+                                    break;
+                                default:
+                                    <span class="badge bg-secondary">Cancelled</span>
+                                    break;
+                            }
+                        </td>
+                        <td>
+                            <div>@t.RequestedDate.ToString("d MMM yyyy")</div>
+                            <div class="small text-muted">@t.RequestedBy</div>
+                        </td>
+                        <td class="text-end">
+                            <a asp-action="Details" asp-route-id="@t.Id" class="btn btn-sm btn-outline-secondary"><i class="bi bi-clock-history me-1"></i> History</a>
+                            @if (canManage && t.Status == TransferStatus.Requested)
+                            {
+                                <form asp-action="Dispatch" asp-route-id="@t.Id" method="post" class="d-inline">
+                                    <button type="submit" class="btn btn-sm btn-warning"><i class="bi bi-box-arrow-up-right me-1"></i> Dispatch</button>
+                                </form>
+                            }
+                            @if (canManage && t.Status == TransferStatus.InTransit)
+                            {
+                                <form asp-action="Complete" asp-route-id="@t.Id" method="post" class="d-inline">
+                                    <button type="submit" class="btn btn-sm btn-success"><i class="bi bi-box-arrow-in-down me-1"></i> Receive</button>
+                                </form>
+                            }
+                            @if (canManage && (t.Status == TransferStatus.Requested || t.Status == TransferStatus.InTransit))
+                            {
+                                <form asp-action="Cancel" asp-route-id="@t.Id" method="post" class="d-inline"
+                                      onsubmit="return confirm('Cancel this transfer? The item stays at @(t.FromBranch?.Name).');">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-x-circle me-1"></i> Cancel</button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

@@ -51,9 +51,9 @@ namespace Bibliotheca.Services
     /// <summary>
     /// Integration point for the Reservation &amp; Waitlist module (Tanisha).
     /// The kiosk account summary asks this service for the patron's holds.
-    /// Until the reservation module exists, <see cref="NoReservationSummaryProvider"/> is registered,
-    /// and the kiosk shows a "not available yet" note. To connect the real module, implement this
-    /// interface and change the single registration line in Program.cs.
+    /// <see cref="ReservationSummaryProvider"/> (in ReservationService.cs) is the registered implementation.
+    /// <see cref="NoReservationSummaryProvider"/> is kept as a fallback that makes the kiosk show a
+    /// "not available" note; to use it, change the single registration line in Program.cs.
     /// </summary>
     public interface IReservationSummaryProvider
     {
@@ -64,6 +64,8 @@ namespace Bibliotheca.Services
 
     public sealed class KioskReservationInfo
     {
+        public int Id { get; init; }
+        public int ItemId { get; init; }
         public string ItemName { get; init; } = string.Empty;
         public string LibraryCode { get; init; } = string.Empty;
         public string Status { get; init; } = string.Empty;   // e.g. Waiting, Ready

@@ -31,6 +31,8 @@ namespace Bibliotheca.Controllers
         private readonly ApplicationDbContext _context;
         private readonly ICirculationService _circulation;
         private readonly IReservationSummaryProvider _reservations;
+        private readonly IReservationService _reservationService;
+        private readonly INotificationService _notificationService;
         private readonly KioskOptions _options;
         private readonly ILogger<KioskController> _logger;
 
@@ -38,12 +40,16 @@ namespace Bibliotheca.Controllers
             ApplicationDbContext context,
             ICirculationService circulation,
             IReservationSummaryProvider reservations,
+            IReservationService reservationService,
+            INotificationService notificationService,
             IOptions<KioskOptions> options,
             ILogger<KioskController> logger)
         {
             _context = context;
             _circulation = circulation;
             _reservations = reservations;
+            _reservationService = reservationService;
+            _notificationService = notificationService;
             _options = options.Value;
             _logger = logger;
         }
@@ -144,6 +150,8 @@ namespace Bibliotheca.Controllers
                 };
             }).ToList();
 
+            var recentMessages = await _notificationService.GetForBorrowerAsync(borrower.Id, 6);
+
             var model = new KioskAccountViewModel
             {
                 FirstName = borrower.FirstName,
@@ -163,6 +171,12 @@ namespace Bibliotheca.Controllers
                 Reservations = _reservations.IsEnabled
                     ? await _reservations.GetForBorrowerAsync(borrower.Id)
                     : Array.Empty<KioskReservationInfo>(),
+                Notifications = recentMessages.Select(n => new KioskNotificationRow
+                {
+                    Subject = n.Subject,
+                    Message = n.Message,
+                    CreatedDate = n.CreatedDate
+                }).ToList(),
                 MaxActiveLoans = _options.MaxActiveLoans
             };
 
@@ -191,6 +205,7 @@ namespace Bibliotheca.Controllers
                 Category = category,
                 AvailableOnly = availableOnly,
                 IsPatronIdentified = borrower != null,
+                PatronId = borrower?.Id,
                 HasSearched = !string.IsNullOrWhiteSpace(q) || category != "All" || availableOnly
             };
 
@@ -214,6 +229,20 @@ namespace Bibliotheca.Controllers
 
                 model.ResultsTruncated = results.Count > KioskSearchViewModel.MaxResults;
                 model.Results = results.Take(KioskSearchViewModel.MaxResults).ToList();
+
+                if (model.Results.Count > 0)
+                {
+                    // Hold queues / transfers decide whether an "Available" item can really be borrowed
+                    model.LendingStates = await _reservationService.GetLendingStatesAsync(model.Results.Select(i => i.Id));
+
+                    if (borrower != null)
+                    {
+                        var mine = await _reservationService.GetActiveForBorrowerAsync(borrower.Id);
+                        model.MyHolds = mine
+                            .GroupBy(r => r.ItemId)
+                            .ToDictionary(g => g.Key, g => g.First());
+                    }
+                }
             }
 
             return View(model);
@@ -251,6 +280,16 @@ namespace Bibliotheca.Controllers
             if (model.Item.Status != ItemStatus.Available)
             {
                 model.ErrorMessage = UnavailableMessage(model.Item);
+                model.CanOfferHold = model.Item.Status != ItemStatus.Destroyed;
+                return View(model);
+            }
+
+            // Held for another patron, or being moved to another branch
+            var holdBlock = await _circulation.GetBlockReasonAsync(model.Item, borrower.Id);
+            if (holdBlock != null)
+            {
+                model.ErrorMessage = holdBlock;
+                model.CanOfferHold = true;
                 return View(model);
             }
 
@@ -299,6 +338,9 @@ namespace Bibliotheca.Controllers
                     CheckoutError.ItemUnavailable when result.Item != null => UnavailableMessage(result.Item),
                     _ => result.Message
                 };
+                model.CanOfferHold = result.Item != null
+                    && result.Item.Status != ItemStatus.Destroyed
+                    && result.Error is CheckoutError.ItemUnavailable or CheckoutError.ItemReserved or CheckoutError.ItemInTransit;
                 return View("Checkout", model);
             }
 
@@ -331,6 +373,54 @@ namespace Bibliotheca.Controllers
                 DueDate = loan.DueDate,
                 ItemsOnLoan = onLoan
             });
+        }
+
+        // ------------------------------------------------------------------
+        // Holds (reservations)
+        // ------------------------------------------------------------------
+
+        // POST: /Kiosk/PlaceHold
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> PlaceHold(string? code)
+        {
+            var borrower = await GetCurrentBorrowerAsync();
+            if (borrower == null) return SessionEnded("Please scan your library card to place a hold.");
+
+            var result = await _reservationService.PlaceHoldAsync(borrower.CardNumber, code, "Kiosk");
+            if (result.Succeeded)
+            {
+                TempData["KioskInfo"] = result.Message;
+                _logger.LogInformation("Kiosk: borrower {BorrowerId} placed a hold on {LibraryCode}.", borrower.Id, CirculationService.Normalise(code));
+            }
+            else
+            {
+                TempData["KioskError"] = result.Message;
+            }
+
+            return RedirectToAction(nameof(Account));
+        }
+
+        // POST: /Kiosk/CancelHold
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CancelHold(int id)
+        {
+            var borrower = await GetCurrentBorrowerAsync();
+            if (borrower == null) return SessionEnded();
+
+            // Only the signed-in patron's own holds can be cancelled
+            var result = await _reservationService.CancelAsync(id, borrower.Id, "Cancelled by the patron at the kiosk.");
+            if (result.Succeeded)
+            {
+                TempData["KioskInfo"] = result.Message;
+            }
+            else
+            {
+                TempData["KioskError"] = result.Message;
+            }
+
+            return RedirectToAction(nameof(Account));
         }
 
         // ------------------------------------------------------------------
@@ -436,8 +526,8 @@ namespace Bibliotheca.Controllers
 
         private static string UnavailableMessage(Item item) => item.Status switch
         {
-            ItemStatus.Borrowed => $"'{item.Name}' is already on loan to someone else. Ask staff about placing a hold.",
-            ItemStatus.Damaged => $"'{item.Name}' is being repaired and can't be borrowed right now. Ask staff about placing a hold.",
+            ItemStatus.Borrowed => $"'{item.Name}' is already on loan to someone else. You can place a hold and we'll let you know when it is ready.",
+            ItemStatus.Damaged => $"'{item.Name}' is being repaired and can't be borrowed right now. You can place a hold and we'll let you know when it is ready.",
             _ => $"'{item.Name}' is not available to borrow."
         };
 

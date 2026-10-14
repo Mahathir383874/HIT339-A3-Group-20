@@ -129,7 +129,7 @@
             }
             else if (!Model.Reservations.Any())
             {
-                <p class="kiosk-empty">You have no reservations.</p>
+                <p class="kiosk-empty">You have no reservations. Search the catalogue to place a hold on an item that is on loan.</p>
             }
             else
             {
@@ -142,15 +142,48 @@
                                 <span class="kiosk-item-meta">@r.LibraryCode@(r.PickupBranch != null ? $" · Pick up at {r.PickupBranch}" : "")</span>
                             </div>
                             <div class="kiosk-list-side">
-                                <span class="kiosk-badge @(r.Status == "Ready" ? "kiosk-badge-ok" : "kiosk-badge-neutral")">@r.Status</span>
+                                <span class="kiosk-badge @(r.Status == "Ready" ? "kiosk-badge-ok" : "kiosk-badge-neutral")">@(r.Status == "Ready" ? "Ready for pickup" : "Waiting")</span>
                                 @if (r.QueuePosition.HasValue && r.Status != "Ready")
                                 {
                                     <span class="kiosk-item-meta">Position @r.QueuePosition in queue</span>
                                 }
+                                @if (r.Status == "Ready")
+                                {
+                                    <a asp-action="Checkout" asp-route-code="@r.LibraryCode" class="kiosk-btn kiosk-btn-primary">Borrow now</a>
+                                }
+                                <form asp-action="CancelHold" method="post" class="m-0">
+                                    <input type="hidden" name="id" value="@r.Id" />
+                                    <button type="submit" class="kiosk-btn kiosk-btn-outline" data-once>Cancel hold</button>
+                                </form>
                             </div>
                         </li>
                     }
                 </ul>
+            }
+        </section>
+
+        <!-- Simulated notifications -->
+        <section class="kiosk-card" aria-labelledby="messages-heading">
+            <h2 id="messages-heading" class="kiosk-h2"><i class="bi bi-envelope" aria-hidden="true"></i> Recent messages</h2>
+            @if (!Model.Notifications.Any())
+            {
+                <p class="kiosk-empty">No messages yet.</p>
+            }
+            else
+            {
+                <ul class="kiosk-list">
+                    @foreach (var n in Model.Notifications)
+                    {
+                        <li class="kiosk-list-item">
+                            <div class="kiosk-list-main">
+                                <span class="kiosk-item-name">@n.Subject</span>
+                                <span class="kiosk-item-meta">@n.Message</span>
+                            </div>
+                            <div class="kiosk-list-side"><span class="kiosk-item-meta">@Local(n.CreatedDate)</span></div>
+                        </li>
+                    }
+                </ul>
+                <p class="kiosk-help">Messages are recorded by the library system (simulated e-mail / SMS).</p>
             }
         </section>
     </div>

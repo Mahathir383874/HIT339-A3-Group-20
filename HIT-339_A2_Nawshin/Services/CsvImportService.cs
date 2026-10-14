@@ -199,6 +199,18 @@ namespace Bibliotheca.Services
                     try
                     {
                         await using var transaction = await _context.Database.BeginTransactionAsync();
+
+                        // Imported items start at the default (first active) branch; staff can move them with a transfer.
+                        var defaultBranchId = await _context.Branches
+                            .Where(b => b.IsActive)
+                            .OrderBy(b => b.Id)
+                            .Select(b => (int?)b.Id)
+                            .FirstOrDefaultAsync();
+                        foreach (var imported in toImport)
+                        {
+                            imported.BranchId ??= defaultBranchId;
+                        }
+
                         _context.Items.AddRange(toImport);
                         await _context.SaveChangesAsync();
                         await transaction.CommitAsync();

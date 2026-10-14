@@ -56,5 +56,6 @@ namespace Bibliotheca.Models.Entities
         // Navigation collections
         public virtual ICollection<Loan> Loans { get; set; } = new List<Loan>();
         public virtual ICollection<Fine> Fines { get; set; } = new List<Fine>();
+        public virtual ICollection<Reservation> Reservations { get; set; } = new List<Reservation>();
     }
 }

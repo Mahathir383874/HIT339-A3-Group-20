@@ -1,0 +1,84 @@
+@model Bibliotheca.Models.Entities.BranchTransfer
+@using Bibliotheca.Models.Enums
+@{
+    ViewData["Title"] = $"Transfer #{Model.Id}";
+    var canManage = User.IsInRole("Admin") || User.IsInRole("Reception");
+    var active = Model.Status == TransferStatus.Requested || Model.Status == TransferStatus.InTransit;
+}
+
+<div class="row justify-content-center py-3">
+    <div class="col-12 col-lg-8">
+        <div class="card-custom p-4 p-md-5 shadow-sm">
+            <div class="d-flex align-items-center justify-content-between border-bottom pb-3 mb-4">
+                <div>
+                    <span class="badge role-reception fw-bold text-uppercase px-2 py-1 mb-1"><i class="bi bi-truck me-1"></i> Transfer #@Model.Id</span>
+                    <h3 class="fw-bold mb-0">@(Model.Item?.Name ?? "(item removed)")</h3>
+                    <div class="text-muted small">@Model.FromBranch?.Name &rarr; @Model.ToBranch?.Name</div>
+                </div>
+                <a asp-action="Index" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i> Back</a>
+            </div>
+
+            <h6 class="fw-bold mb-3">Status history</h6>
+            <ul class="list-group list-group-flush mb-4">
+                <li class="list-group-item px-0">
+                    <i class="bi bi-1-circle-fill text-primary me-2"></i><strong>Requested</strong>
+                    <div class="small text-muted ms-4">@Model.RequestedDate.ToString("d MMM yyyy HH:mm") UTC@(string.IsNullOrEmpty(Model.RequestedBy) ? "" : " by " + Model.RequestedBy)</div>
+                    @if (!string.IsNullOrEmpty(Model.Notes))
+                    {
+                        <div class="small ms-4">Note: @Model.Notes</div>
+                    }
+                </li>
+                @if (Model.DispatchedDate.HasValue)
+                {
+                    <li class="list-group-item px-0">
+                        <i class="bi bi-2-circle-fill text-warning me-2"></i><strong>Dispatched (in transit)</strong>
+                        <div class="small text-muted ms-4">@Model.DispatchedDate.Value.ToString("d MMM yyyy HH:mm") UTC@(string.IsNullOrEmpty(Model.DispatchedBy) ? "" : " by " + Model.DispatchedBy)</div>
+                    </li>
+                }
+                @if (Model.CompletedDate.HasValue)
+                {
+                    <li class="list-group-item px-0">
+                        <i class="bi bi-check-circle-fill text-success me-2"></i><strong>Completed - item now at @Model.ToBranch?.Name</strong>
+                        <div class="small text-muted ms-4">@Model.CompletedDate.Value.ToString("d MMM yyyy HH:mm") UTC@(string.IsNullOrEmpty(Model.CompletedBy) ? "" : " by " + Model.CompletedBy)</div>
+                    </li>
+                }
+                @if (Model.CancelledDate.HasValue)
+                {
+                    <li class="list-group-item px-0">
+                        <i class="bi bi-x-circle-fill text-secondary me-2"></i><strong>Cancelled - item stayed at @Model.FromBranch?.Name</strong>
+                        <div class="small text-muted ms-4">@Model.CancelledDate.Value.ToString("d MMM yyyy HH:mm") UTC@(string.IsNullOrEmpty(Model.CancelledBy) ? "" : " by " + Model.CancelledBy)</div>
+                        @if (!string.IsNullOrEmpty(Model.CancelReason))
+                        {
+                            <div class="small ms-4">Reason: @Model.CancelReason</div>
+                        }
+                    </li>
+                }
+            </ul>
+
+            @if (canManage && active)
+            {
+                <div class="d-flex flex-wrap gap-2 pt-3 border-top">
+                    @if (Model.Status == TransferStatus.Requested)
+                    {
+                        <form asp-action="Dispatch" asp-route-id="@Model.Id" method="post">
+                            <input type="hidden" name="returnTo" value="details" />
+                            <button type="submit" class="btn btn-warning"><i class="bi bi-box-arrow-up-right me-1"></i> Dispatch</button>
+                        </form>
+                    }
+                    @if (Model.Status == TransferStatus.InTransit)
+                    {
+                        <form asp-action="Complete" asp-route-id="@Model.Id" method="post">
+                            <input type="hidden" name="returnTo" value="details" />
+                            <button type="submit" class="btn btn-success"><i class="bi bi-box-arrow-in-down me-1"></i> Receive at @Model.ToBranch?.Name</button>
+                        </form>
+                    }
+                    <form asp-action="Cancel" asp-route-id="@Model.Id" method="post" class="d-flex gap-2">
+                        <input type="hidden" name="returnTo" value="details" />
+                        <input type="text" name="reason" class="form-control form-control-sm" maxlength="250" placeholder="Reason (optional)" aria-label="Cancellation reason" />
+                        <button type="submit" class="btn btn-outline-danger text-nowrap"><i class="bi bi-x-circle me-1"></i> Cancel transfer</button>
+                    </form>
+                </div>
+            }
+        </div>
+    </div>
+</div>

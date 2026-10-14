@@ -25,6 +25,16 @@
             <label for="to" class="form-label small mb-1">To date (inclusive)</label>
             <input type="date" id="to" name="to" class="form-control form-control-sm" value="@toText" />
         </div>
+        <div class="col-12 col-md-3">
+            <label for="branchId" class="form-label small mb-1">Branch</label>
+            <select id="branchId" name="branchId" class="form-select form-select-sm">
+                <option value="">All branches</option>
+                @foreach (var branch in Model.Branches)
+                {
+                    <option value="@branch.Id" selected="@(Model.BranchId == branch.Id)">@branch.Name</option>
+                }
+            </select>
+        </div>
         <div class="col-12 col-md-auto d-flex gap-2">
             <button type="submit" class="btn btn-sm btn-primary-custom"><i class="bi bi-funnel me-1"></i> Apply filter</button>
             <a class="btn btn-sm btn-outline-custom" asp-action="Index">Clear</a>
@@ -32,6 +42,7 @@
         <div class="col-12 small text-muted">
             The date filter applies to the borrowing report (loan date) and the fines report (date the fine was incurred).
             The inventory report is always a snapshot of the catalogue today.
+            The branch filter applies to all three reports (the branch that currently holds the item).
         </div>
     </form>
 </div>
@@ -44,6 +55,7 @@
 
 @await Html.PartialAsync("_ReportCard", new ReportCardViewModel
 {
+    BranchId = Model.BranchId,
     Kind = "Borrowing",
     Icon = "bi-journal-check",
     UsesDateFilter = true,
@@ -54,6 +66,7 @@
 
 @await Html.PartialAsync("_ReportCard", new ReportCardViewModel
 {
+    BranchId = Model.BranchId,
     Kind = "Fines",
     Icon = "bi-cash-coin",
     UsesDateFilter = true,
@@ -64,6 +77,7 @@
 
 @await Html.PartialAsync("_ReportCard", new ReportCardViewModel
 {
+    BranchId = Model.BranchId,
     Kind = "Inventory",
     Icon = "bi-box-seam",
     UsesDateFilter = false,

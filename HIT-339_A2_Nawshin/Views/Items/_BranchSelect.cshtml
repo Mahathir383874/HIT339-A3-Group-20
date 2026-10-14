@@ -1,0 +1,18 @@
+@model Bibliotheca.Models.Entities.Item
+@{
+    var branches = ViewBag.Branches as IEnumerable<Branch> ?? Enumerable.Empty<Branch>();
+}
+<!-- Branch that physically holds the item -->
+<div class="col-12 col-md-6">
+    <label for="BranchId" class="form-label fw-semibold small">Branch</label>
+    <select id="BranchId" name="BranchId" class="form-select" required>
+        <option value="">-- Choose branch --</option>
+        @foreach (var branch in branches)
+        {
+            <option value="@branch.Id" selected="@(Model.BranchId == branch.Id)">@branch.Name (@branch.Code)@(branch.IsActive ? "" : " - closed")</option>
+        }
+    </select>
+    <span asp-validation-for="BranchId" class="text-danger small"></span>
+    <div class="form-text small">The branch that physically holds this item. To move it later use an inter-branch transfer.</div>
+</div>
+

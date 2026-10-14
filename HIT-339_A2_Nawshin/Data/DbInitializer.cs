@@ -15,6 +15,10 @@ namespace Bibliotheca.Data
             var userManager = serviceProvider.GetRequiredService<UserManager<ApplicationUser>>();
             var roleManager = serviceProvider.GetRequiredService<RoleManager<IdentityRole>>();
 
+            // A demo database created before the multi-branch / reservation / notification tables existed
+            // cannot be upgraded by EnsureCreated, so it is backed up and rebuilt (the seed data is recreated).
+            await RebuildOutdatedDatabaseAsync(context, serviceProvider);
+
             // Ensure database is created
             await context.Database.EnsureCreatedAsync();
 

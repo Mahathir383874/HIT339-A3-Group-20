@@ -18,9 +18,9 @@ namespace Bibliotheca.Services
     /// Builds the manager reports as plain tables of text (see ReportDocument) so that the
     /// on-screen view, the CSV export and the PDF export always show exactly the same figures.
     ///
-    /// Branch filtering: once the multi-branch model exists, add an optional branch id parameter to
-    /// the BuildXxxAsync methods and filter loans / items / fines on the item's branch before the
-    /// figures are calculated. Nothing else in this class needs to change.
+    /// Branch filtering: every BuildXxxAsync method takes an optional branch id. Loans, fines and items are
+    /// filtered on the branch that currently holds the item before any figure is calculated, so the
+    /// on-screen view, CSV and PDF stay consistent.
     /// </summary>
     public class ReportService
     {
@@ -33,13 +33,13 @@ namespace Bibliotheca.Services
             _context = context;
         }
 
-        public Task<ReportDocument> BuildAsync(ReportKind kind, DateTime? from, DateTime? to)
+        public Task<ReportDocument> BuildAsync(ReportKind kind, DateTime? from, DateTime? to, int? branchId = null)
         {
             return kind switch
             {
-                ReportKind.Borrowing => BuildBorrowingAsync(from, to),
-                ReportKind.Fines => BuildFinesAsync(from, to),
-                ReportKind.Inventory => BuildInventoryAsync(),
+                ReportKind.Borrowing => BuildBorrowingAsync(from, to, branchId),
+                ReportKind.Fines => BuildFinesAsync(from, to, branchId),
+                ReportKind.Inventory => BuildInventoryAsync(branchId),
                 _ => throw new ArgumentOutOfRangeException(nameof(kind))
             };
         }
@@ -47,9 +47,10 @@ namespace Bibliotheca.Services
         // =====================================================================
         // 1. Borrowing statistics
         // =====================================================================
-        public async Task<ReportDocument> BuildBorrowingAsync(DateTime? from, DateTime? to)
+        public async Task<ReportDocument> BuildBorrowingAsync(DateTime? from, DateTime? to, int? branchId = null)
         {
             var (start, endExclusive) = NormaliseRange(from, to);
+            var branchName = await BranchNameAsync(branchId);
 
             var allLoans = await _context.Loans
                 .AsNoTracking()
@@ -59,7 +60,8 @@ namespace Bibliotheca.Services
 
             var loans = allLoans
                 .Where(l => (!start.HasValue || l.BorrowDate >= start.Value) &&
-                            (!endExclusive.HasValue || l.BorrowDate < endExclusive.Value))
+                            (!endExclusive.HasValue || l.BorrowDate < endExclusive.Value) &&
+                            (!branchId.HasValue || l.Item?.BranchId == branchId.Value))
                 .ToList();
 
             var now = DateTime.UtcNow;
@@ -78,7 +80,7 @@ namespace Bibliotheca.Services
             var document = new ReportDocument
             {
                 Title = "Borrowing Statistics Report",
-                Subtitle = "Period: " + PeriodText(from, to),
+                Subtitle = "Period: " + PeriodText(from, to) + BranchText(branchName),
                 GeneratedUtc = now
             };
 
@@ -171,9 +173,10 @@ namespace Bibliotheca.Services
         // =====================================================================
         // 2. Fine revenue audit
         // =====================================================================
-        public async Task<ReportDocument> BuildFinesAsync(DateTime? from, DateTime? to)
+        public async Task<ReportDocument> BuildFinesAsync(DateTime? from, DateTime? to, int? branchId = null)
         {
             var (start, endExclusive) = NormaliseRange(from, to);
+            var branchName = await BranchNameAsync(branchId);
 
             var allFines = await _context.Fines
                 .AsNoTracking()
@@ -184,7 +187,8 @@ namespace Bibliotheca.Services
 
             var fines = allFines
                 .Where(f => (!start.HasValue || f.CreatedDate >= start.Value) &&
-                            (!endExclusive.HasValue || f.CreatedDate < endExclusive.Value))
+                            (!endExclusive.HasValue || f.CreatedDate < endExclusive.Value) &&
+                            (!branchId.HasValue || f.Loan?.Item?.BranchId == branchId.Value))
                 .ToList();
 
             var totalIssued = fines.Sum(f => f.Amount);
@@ -195,7 +199,7 @@ namespace Bibliotheca.Services
             var document = new ReportDocument
             {
                 Title = "Fine Revenue Audit",
-                Subtitle = "Fines incurred in period: " + PeriodText(from, to),
+                Subtitle = "Fines incurred in period: " + PeriodText(from, to) + BranchText(branchName),
                 GeneratedUtc = DateTime.UtcNow
             };
 
@@ -271,16 +275,20 @@ namespace Bibliotheca.Services
         // =====================================================================
         // 3. Inventory health
         // =====================================================================
-        public async Task<ReportDocument> BuildInventoryAsync()
+        public async Task<ReportDocument> BuildInventoryAsync(int? branchId = null)
         {
-            var items = await _context.Items.AsNoTracking().ToListAsync();
+            var branchName = await BranchNameAsync(branchId);
+            var allItems = await _context.Items.AsNoTracking().Include(i => i.Branch).ToListAsync();
+            var items = allItems.Where(i => !branchId.HasValue || i.BranchId == branchId.Value).ToList();
 
-            var openLoans = await _context.Loans
-                .AsNoTracking()
-                .Include(l => l.Item)
-                .Include(l => l.Borrower)
-                .Where(l => l.Status != LoanStatus.Returned)
-                .ToListAsync();
+            var openLoans = (await _context.Loans
+                    .AsNoTracking()
+                    .Include(l => l.Item)
+                    .Include(l => l.Borrower)
+                    .Where(l => l.Status != LoanStatus.Returned)
+                    .ToListAsync())
+                .Where(l => !branchId.HasValue || l.Item?.BranchId == branchId.Value)
+                .ToList();
 
             var now = DateTime.UtcNow;
             var total = items.Count;
@@ -295,7 +303,7 @@ namespace Bibliotheca.Services
             var document = new ReportDocument
             {
                 Title = "Inventory Health Report",
-                Subtitle = "Snapshot of the catalogue right now",
+                Subtitle = "Snapshot of the catalogue right now" + BranchText(branchName),
                 GeneratedUtc = now
             };
 
@@ -333,11 +341,36 @@ namespace Bibliotheca.Services
             }
             document.Sections.Add(byCategory);
 
+            // Stock by branch (shows every branch, or only the selected one)
+            var byBranch = new ReportSection
+            {
+                Heading = "Stock by branch",
+                Columns = new List<string> { "Branch", "Total", "Available", "Borrowed", "Damaged", "Destroyed", "Healthy stock" },
+                EmptyMessage = "The catalogue has no items."
+            };
+            foreach (var group in items
+                         .GroupBy(i => i.Branch?.Name ?? "Not assigned")
+                         .OrderBy(g => g.Key))
+            {
+                var bad = group.Count(i => i.Status == ItemStatus.Damaged || i.Status == ItemStatus.Destroyed);
+                byBranch.Rows.Add(new List<string>
+                {
+                    group.Key,
+                    group.Count().ToString(Inv),
+                    group.Count(i => i.Status == ItemStatus.Available).ToString(Inv),
+                    group.Count(i => i.Status == ItemStatus.Borrowed).ToString(Inv),
+                    group.Count(i => i.Status == ItemStatus.Damaged).ToString(Inv),
+                    group.Count(i => i.Status == ItemStatus.Destroyed).ToString(Inv),
+                    Percent(group.Count() - bad, group.Count())
+                });
+            }
+            document.Sections.Add(byBranch);
+
             // Items needing attention
             var attention = new ReportSection
             {
                 Heading = "Items needing attention (damaged or destroyed)",
-                Columns = new List<string> { "Library code", "Title", "Category", "Status", "Replacement cost" },
+                Columns = new List<string> { "Library code", "Title", "Category", "Branch", "Status", "Replacement cost" },
                 EmptyMessage = "No items are damaged or destroyed."
             };
             foreach (var item in needAttention.OrderByDescending(i => i.ReplacementCost).ThenBy(i => i.Name))
@@ -347,13 +380,14 @@ namespace Bibliotheca.Services
                     item.LibraryCode,
                     item.Name,
                     item.ItemType,
+                    item.Branch?.Name ?? "-",
                     item.Status.ToString(),
                     Money(item.ReplacementCost)
                 });
             }
             if (needAttention.Count > 0)
             {
-                attention.Rows.Add(new List<string> { "TOTAL", "", "", "", Money(liability) });
+                attention.Rows.Add(new List<string> { "TOTAL", "", "", "", "", Money(liability) });
             }
             document.Sections.Add(attention);
 
@@ -412,6 +446,15 @@ namespace Bibliotheca.Services
             if (to.HasValue) return "up to " + DateText(to.Value);
             return "all dates";
         }
+
+        private async Task<string?> BranchNameAsync(int? branchId)
+        {
+            if (!branchId.HasValue) return null;
+            return await _context.Branches.Where(b => b.Id == branchId.Value).Select(b => b.Name).FirstOrDefaultAsync();
+        }
+
+        private static string BranchText(string? branchName) =>
+            string.IsNullOrEmpty(branchName) ? string.Empty : " | Branch: " + branchName;
 
         private static string DateText(DateTime value) => value.ToString("yyyy-MM-dd", Inv);
 

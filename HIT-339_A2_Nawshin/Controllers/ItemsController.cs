@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Bibliotheca.Data;
 using Bibliotheca.Models.Entities;
 using Bibliotheca.Models.Enums;
+using Bibliotheca.Services;
 
 namespace Bibliotheca.Controllers
 {
@@ -12,17 +13,30 @@ namespace Bibliotheca.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly IWebHostEnvironment _webHostEnvironment;
+        private readonly IReservationService _reservations;
+        private readonly ITransferService _transfers;
 
-        public ItemsController(ApplicationDbContext context, IWebHostEnvironment webHostEnvironment)
+        public ItemsController(
+            ApplicationDbContext context,
+            IWebHostEnvironment webHostEnvironment,
+            IReservationService reservations,
+            ITransferService transfers)
         {
             _context = context;
             _webHostEnvironment = webHostEnvironment;
+            _reservations = reservations;
+            _transfers = transfers;
         }
 
         // GET: /Items
-        public async Task<IActionResult> Index(string? category = "All", string? searchTerm = null, ItemStatus? status = null)
+        public async Task<IActionResult> Index(string? category = "All", string? searchTerm = null, ItemStatus? status = null, int? branchId = null)
         {
-            IQueryable<Item> query = _context.Items;
+            IQueryable<Item> query = _context.Items.Include(i => i.Branch);
+
+            if (branchId.HasValue)
+            {
+                query = query.Where(i => i.BranchId == branchId.Value);
+            }
 
             if (!string.IsNullOrEmpty(category) && category != "All")
             {
@@ -46,6 +60,8 @@ namespace Bibliotheca.Controllers
             ViewBag.ActiveCategory = category;
             ViewBag.SearchTerm = searchTerm;
             ViewBag.Status = status;
+            ViewBag.BranchId = branchId;
+            ViewBag.Branches = await _context.Branches.OrderBy(b => b.Name).ToListAsync();
 
             return View(await query.OrderBy(i => i.LibraryCode).ToListAsync());
         }
@@ -59,6 +75,7 @@ namespace Bibliotheca.Controllers
             }
 
             var item = await _context.Items
+                .Include(i => i.Branch)
                 .Include(i => i.Loans)
                     .ThenInclude(l => l.Borrower)
                 .FirstOrDefaultAsync(m => m.Id == id);
@@ -68,15 +85,25 @@ namespace Bibliotheca.Controllers
                 return NotFound();
             }
 
+            // Hold queue and transfer history for this item
+            ViewBag.Queue = await _reservations.GetQueueForItemAsync(item.Id);
+            ViewBag.Transfers = await _context.BranchTransfers
+                .Include(t => t.FromBranch)
+                .Include(t => t.ToBranch)
+                .Where(t => t.ItemId == item.Id)
+                .OrderByDescending(t => t.Id)
+                .ToListAsync();
+
             return View(item);
         }
 
         // --- CREATE ACTIONS ---
 
         // GET: /Items/CreateBook
-        public IActionResult CreateBook()
+        public async Task<IActionResult> CreateBook()
         {
-            return View(new Book { ReplacementCost = 25.00m });
+            var defaultBranchId = await LoadBranchesAsync(null);
+            return View(new Book { ReplacementCost = 25.00m, BranchId = defaultBranchId });
         }
 
         [HttpPost]
@@ -89,6 +116,8 @@ namespace Bibliotheca.Controllers
                 ModelState.AddModelError("LibraryCode", "A library item with this accession code already exists.");
             }
 
+            await ValidateBranchAsync(book);
+
             if (ModelState.IsValid)
             {
                 book.ImageUrl = await SaveImageFileAsync(imageFile, book.ImageUrl);
@@ -98,13 +127,16 @@ namespace Bibliotheca.Controllers
                 TempData["SuccessMessage"] = $"Book '{book.Name}' ({book.LibraryCode}) created successfully.";
                 return RedirectToAction(nameof(Index), new { category = "Book" });
             }
+
+            await LoadBranchesAsync(book.BranchId);
             return View(book);
         }
 
         // GET: /Items/CreateMusic
-        public IActionResult CreateMusic()
+        public async Task<IActionResult> CreateMusic()
         {
-            return View(new Music { ReplacementCost = 25.00m });
+            var defaultBranchId = await LoadBranchesAsync(null);
+            return View(new Music { ReplacementCost = 25.00m, BranchId = defaultBranchId });
         }
 
         [HttpPost]
@@ -116,6 +148,8 @@ namespace Bibliotheca.Controllers
                 ModelState.AddModelError("LibraryCode", "A library item with this accession code already exists.");
             }
 
+            await ValidateBranchAsync(music);
+
             if (ModelState.IsValid)
             {
                 music.ImageUrl = await SaveImageFileAsync(imageFile, music.ImageUrl);
@@ -125,13 +159,16 @@ namespace Bibliotheca.Controllers
                 TempData["SuccessMessage"] = $"Music album '{music.Name}' ({music.LibraryCode}) created successfully.";
                 return RedirectToAction(nameof(Index), new { category = "Music" });
             }
+
+            await LoadBranchesAsync(music.BranchId);
             return View(music);
         }
 
         // GET: /Items/CreateToy
-        public IActionResult CreateToy()
+        public async Task<IActionResult> CreateToy()
         {
-            return View(new Toy { ReplacementCost = 35.00m });
+            var defaultBranchId = await LoadBranchesAsync(null);
+            return View(new Toy { ReplacementCost = 35.00m, BranchId = defaultBranchId });
         }
 
         [HttpPost]
@@ -143,6 +180,8 @@ namespace Bibliotheca.Controllers
                 ModelState.AddModelError("LibraryCode", "A library item with this accession code already exists.");
             }
 
+            await ValidateBranchAsync(toy);
+
             if (ModelState.IsValid)
             {
                 toy.ImageUrl = await SaveImageFileAsync(imageFile, toy.ImageUrl);
@@ -152,6 +191,8 @@ namespace Bibliotheca.Controllers
                 TempData["SuccessMessage"] = $"Toy '{toy.Name}' ({toy.LibraryCode}) created successfully.";
                 return RedirectToAction(nameof(Index), new { category = "Toy" });
             }
+
+            await LoadBranchesAsync(toy.BranchId);
             return View(toy);
         }
 
@@ -186,6 +227,7 @@ namespace Bibliotheca.Controllers
             if (id == null) return NotFound();
             var book = await _context.Books.FindAsync(id);
             if (book == null) return NotFound();
+            await LoadBranchesAsync(book.BranchId);
             return View(book);
         }
 
@@ -200,6 +242,10 @@ namespace Bibliotheca.Controllers
                 ModelState.AddModelError("LibraryCode", "Another item already uses this library code.");
             }
 
+            await ValidateBranchAsync(book);
+            var previous = await GetPreviousStateAsync(book.Id);
+            await ValidateBranchChangeAsync(book, previous);
+
             if (ModelState.IsValid)
             {
                 try
@@ -207,6 +253,7 @@ namespace Bibliotheca.Controllers
                     book.ImageUrl = await SaveImageFileAsync(imageFile, book.ImageUrl);
                     _context.Update(book);
                     await _context.SaveChangesAsync();
+                    await AfterStatusEditAsync(book.Id, previous?.Status, book.Status);
                     TempData["SuccessMessage"] = $"Book '{book.Name}' updated successfully.";
                 }
                 catch (DbUpdateConcurrencyException)
@@ -216,6 +263,8 @@ namespace Bibliotheca.Controllers
                 }
                 return RedirectToAction(nameof(Index));
             }
+
+            await LoadBranchesAsync(book.BranchId);
             return View(book);
         }
 
@@ -225,6 +274,7 @@ namespace Bibliotheca.Controllers
             if (id == null) return NotFound();
             var music = await _context.Musics.FindAsync(id);
             if (music == null) return NotFound();
+            await LoadBranchesAsync(music.BranchId);
             return View(music);
         }
 
@@ -239,6 +289,10 @@ namespace Bibliotheca.Controllers
                 ModelState.AddModelError("LibraryCode", "Another item already uses this library code.");
             }
 
+            await ValidateBranchAsync(music);
+            var previous = await GetPreviousStateAsync(music.Id);
+            await ValidateBranchChangeAsync(music, previous);
+
             if (ModelState.IsValid)
             {
                 try
@@ -246,6 +300,7 @@ namespace Bibliotheca.Controllers
                     music.ImageUrl = await SaveImageFileAsync(imageFile, music.ImageUrl);
                     _context.Update(music);
                     await _context.SaveChangesAsync();
+                    await AfterStatusEditAsync(music.Id, previous?.Status, music.Status);
                     TempData["SuccessMessage"] = $"Music item '{music.Name}' updated successfully.";
                 }
                 catch (DbUpdateConcurrencyException)
@@ -255,6 +310,8 @@ namespace Bibliotheca.Controllers
                 }
                 return RedirectToAction(nameof(Index));
             }
+
+            await LoadBranchesAsync(music.BranchId);
             return View(music);
         }
 
@@ -264,6 +321,7 @@ namespace Bibliotheca.Controllers
             if (id == null) return NotFound();
             var toy = await _context.Toys.FindAsync(id);
             if (toy == null) return NotFound();
+            await LoadBranchesAsync(toy.BranchId);
             return View(toy);
         }
 
@@ -278,6 +336,10 @@ namespace Bibliotheca.Controllers
                 ModelState.AddModelError("LibraryCode", "Another item already uses this library code.");
             }
 
+            await ValidateBranchAsync(toy);
+            var previous = await GetPreviousStateAsync(toy.Id);
+            await ValidateBranchChangeAsync(toy, previous);
+
             if (ModelState.IsValid)
             {
                 try
@@ -285,6 +347,7 @@ namespace Bibliotheca.Controllers
                     toy.ImageUrl = await SaveImageFileAsync(imageFile, toy.ImageUrl);
                     _context.Update(toy);
                     await _context.SaveChangesAsync();
+                    await AfterStatusEditAsync(toy.Id, previous?.Status, toy.Status);
                     TempData["SuccessMessage"] = $"Toy '{toy.Name}' updated successfully.";
                 }
                 catch (DbUpdateConcurrencyException)
@@ -294,6 +357,8 @@ namespace Bibliotheca.Controllers
                 }
                 return RedirectToAction(nameof(Index));
             }
+
+            await LoadBranchesAsync(toy.BranchId);
             return View(toy);
         }
 
@@ -331,12 +396,91 @@ namespace Bibliotheca.Controllers
                     return RedirectToAction(nameof(Index));
                 }
 
+                var activeHolds = await _reservations.GetQueueLengthAsync(item.Id);
+                if (activeHolds > 0)
+                {
+                    TempData["ErrorMessage"] = $"Cannot delete '{item.Name}' while {activeHolds} patron(s) have an active hold on it. Cancel the reservations first.";
+                    return RedirectToAction(nameof(Index));
+                }
+
+                if (await _transfers.HasActiveTransferAsync(item.Id))
+                {
+                    TempData["ErrorMessage"] = $"Cannot delete '{item.Name}' while it has an inter-branch transfer in progress. Complete or cancel the transfer first.";
+                    return RedirectToAction(nameof(Index));
+                }
+
                 _context.Items.Remove(item);
                 await _context.SaveChangesAsync();
                 TempData["SuccessMessage"] = $"Item '{item.Name}' deleted successfully.";
             }
 
             return RedirectToAction(nameof(Index));
+        }
+
+        // --- HELPERS: branches, status changes ---
+
+        /// <summary>Fills ViewBag.Branches for the branch drop-down and returns the first active branch (the default for new items).</summary>
+        private async Task<int?> LoadBranchesAsync(int? selectedBranchId)
+        {
+            var branches = await _context.Branches.OrderBy(b => b.Name).ToListAsync();
+            var choices = branches.Where(b => b.IsActive || b.Id == selectedBranchId).ToList();
+            ViewBag.Branches = choices;
+            return choices.FirstOrDefault(b => b.IsActive)?.Id;
+        }
+
+        private async Task ValidateBranchAsync(Item item)
+        {
+            if (!item.BranchId.HasValue)
+            {
+                ModelState.AddModelError(nameof(Item.BranchId), "Please choose the branch that holds this item.");
+                return;
+            }
+
+            if (!await _context.Branches.AnyAsync(b => b.Id == item.BranchId.Value))
+            {
+                ModelState.AddModelError(nameof(Item.BranchId), "The selected branch does not exist.");
+            }
+        }
+
+        private sealed record PreviousItemState(ItemStatus Status, int? BranchId);
+
+        private async Task<PreviousItemState?> GetPreviousStateAsync(int itemId)
+        {
+            var row = await _context.Items
+                .AsNoTracking()
+                .Where(i => i.Id == itemId)
+                .Select(i => new { i.Status, i.BranchId })
+                .FirstOrDefaultAsync();
+
+            return row == null ? null : new PreviousItemState(row.Status, row.BranchId);
+        }
+
+        /// <summary>An item that is part of a transfer in progress must not be moved by editing its branch.</summary>
+        private async Task ValidateBranchChangeAsync(Item item, PreviousItemState? previous)
+        {
+            if (previous == null || previous.BranchId == item.BranchId) return;
+
+            if (await _transfers.HasActiveTransferAsync(item.Id))
+            {
+                ModelState.AddModelError(nameof(Item.BranchId),
+                    "This item has an inter-branch transfer in progress, so its branch cannot be edited. Complete or cancel the transfer first.");
+            }
+        }
+
+        /// <summary>
+        /// When staff change an item's status by hand the hold queue has to follow: an item set back to Available
+        /// serves the next waiting patron, and a destroyed item cancels its holds.
+        /// </summary>
+        private async Task AfterStatusEditAsync(int itemId, ItemStatus? previousStatus, ItemStatus newStatus)
+        {
+            if (previousStatus == newStatus) return;
+            if (newStatus != ItemStatus.Available && newStatus != ItemStatus.Destroyed) return;
+
+            var promoted = await _reservations.AdvanceQueueAsync(itemId);
+            if (promoted?.Borrower != null)
+            {
+                TempData["InfoMessage"] = $"Hold queue advanced: {promoted.Borrower.FullName} is next in line and was notified that the item is ready.";
+            }
         }
 
         // --- HELPER: Process Device File Upload or URL ---

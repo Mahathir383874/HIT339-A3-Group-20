@@ -53,6 +53,13 @@
         <div class="col-12 col-md-5">
             <form asp-action="Index" method="get" class="d-flex gap-2">
                 <input type="hidden" name="filter" value="@activeFilter" />
+                <select name="branchId" class="form-select form-select-sm" style="max-width: 190px;" aria-label="Filter by branch">
+                    <option value="">All branches</option>
+                    @foreach (var branch in (IEnumerable<Branch>)ViewBag.Branches)
+                    {
+                        <option value="@branch.Id" selected="@((int?)ViewBag.BranchId == branch.Id)">@branch.Name</option>
+                    }
+                </select>
                 <div class="input-group">
                     <input type="text" name="searchTerm" class="form-control form-control-sm" placeholder="Search by item code, title, borrower..." value="@ViewBag.SearchTerm" />
                     <button class="btn btn-sm btn-outline-secondary" type="submit"><i class="bi bi-search"></i></button>
@@ -106,6 +113,10 @@
                                         @loan.Item?.Name
                                     </div>
                                     <span class="badge badge-type">@loan.Item?.ItemType</span>
+                                    @if (loan.Item?.Branch != null)
+                                    {
+                                        <span class="badge bg-light text-secondary border"><i class="bi bi-building me-1"></i>@loan.Item.Branch.Name</span>
+                                    }
                                 </div>
                             </div>
                         </td>

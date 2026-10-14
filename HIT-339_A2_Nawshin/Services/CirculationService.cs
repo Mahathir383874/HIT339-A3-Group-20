@@ -25,6 +25,12 @@ namespace Bibliotheca.Services
 
         Task<List<Fine>> GetUnpaidFinesAsync(int borrowerId);
 
+        /// <summary>
+        /// Null when <paramref name="item"/> can be lent to this borrower; otherwise the reason it cannot
+        /// (it is being transferred between branches, or held for another patron's reservation).
+        /// </summary>
+        Task<string?> GetBlockReasonAsync(Item item, int borrowerId);
+
         /// <summary>Fine that would be charged if the loan were returned at <paramref name="asOf"/>.</summary>
         decimal CalculateFine(DateTime dueDate, DateTime asOf, out int daysLate);
     }
@@ -58,7 +64,9 @@ namespace Bibliotheca.Services
         ItemUnavailable,
         LoanLimitReached,
         HasOverdueItems,
-        UnpaidFinesTooHigh
+        UnpaidFinesTooHigh,
+        ItemReserved,
+        ItemInTransit
     }
 
     public sealed class CheckoutResult
@@ -81,10 +89,12 @@ namespace Bibliotheca.Services
     public class CirculationService : ICirculationService
     {
         private readonly ApplicationDbContext _context;
+        private readonly INotificationService _notifications;
 
-        public CirculationService(ApplicationDbContext context)
+        public CirculationService(ApplicationDbContext context, INotificationService notifications)
         {
             _context = context;
+            _notifications = notifications;
         }
 
         public decimal DailyFineRate => 1.00m;
@@ -173,6 +183,13 @@ namespace Bibliotheca.Services
                     $"Item '{item.Name}' is not available (Current Status: {item.Status}).", borrower, item);
             }
 
+            // 3b. Branch transfers and reservations (shared by the desk and the kiosk)
+            var hold = await EvaluateHoldsAsync(item, borrower.Id);
+            if (hold.Error != CheckoutError.None)
+            {
+                return CheckoutResult.Fail(hold.Error, hold.Message!, borrower, item);
+            }
+
             // 4. Create loan record and mark item as borrowed
             var borrowDate = DateTime.UtcNow;
             var loan = new Loan
@@ -187,6 +204,16 @@ namespace Bibliotheca.Services
 
             item.Status = ItemStatus.Borrowed;
             _context.Loans.Add(loan);
+
+            // The patron's own hold (if any) is fulfilled by this loan
+            if (hold.ToFulfil != null)
+            {
+                hold.ToFulfil.Status = ReservationStatus.Fulfilled;
+                hold.ToFulfil.FulfilledDate = borrowDate;
+            }
+
+            // Simulated "you borrowed ..." notification, saved together with the loan
+            _notifications.StageBorrowed(borrower, item, loan);
             await _context.SaveChangesAsync();
 
             return new CheckoutResult
@@ -197,6 +224,46 @@ namespace Bibliotheca.Services
                 Item = item,
                 Loan = loan
             };
+        }
+
+        public async Task<string?> GetBlockReasonAsync(Item item, int borrowerId)
+        {
+            var hold = await EvaluateHoldsAsync(item, borrowerId);
+            return hold.Message;
+        }
+
+        /// <summary>
+        /// An item that is being moved between branches cannot be lent, and an item with a hold queue belongs to
+        /// the patron at the front of that queue. When the borrower is that patron their hold is returned so the
+        /// loan can fulfil it.
+        /// </summary>
+        private async Task<(CheckoutError Error, string? Message, Reservation? ToFulfil)> EvaluateHoldsAsync(Item item, int borrowerId)
+        {
+            var transfer = await _context.BranchTransfers
+                .Include(t => t.ToBranch)
+                .FirstOrDefaultAsync(t => t.ItemId == item.Id &&
+                                          (t.Status == TransferStatus.Requested || t.Status == TransferStatus.InTransit));
+            if (transfer != null)
+            {
+                var destination = transfer.ToBranch?.Name ?? "another branch";
+                return (CheckoutError.ItemInTransit,
+                    $"'{item.Name}' is being transferred to {destination} and can't be borrowed until it arrives.", null);
+            }
+
+            var queue = await _context.Reservations
+                .Where(r => r.ItemId == item.Id && (r.Status == ReservationStatus.Waiting || r.Status == ReservationStatus.Ready))
+                .OrderBy(r => r.Id)
+                .ToListAsync();
+
+            if (queue.Count == 0) return (CheckoutError.None, null, null);
+
+            var first = queue[0];
+            if (first.BorrowerId != borrowerId)
+            {
+                return (CheckoutError.ItemReserved, $"'{item.Name}' is being held for another patron who reserved it.", null);
+            }
+
+            return (CheckoutError.None, null, first);
         }
 
         public async Task<List<Loan>> GetCurrentLoansAsync(int borrowerId)

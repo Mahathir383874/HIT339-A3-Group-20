@@ -59,6 +59,29 @@
 
                     <h2 class="fw-bold mb-3">@Model.Name</h2>
 
+                    @{
+                        var lending = ViewBag.Lending as ItemLendingState;
+                    }
+                    <div class="mb-3 small text-muted d-flex flex-wrap gap-3">
+                        <span><i class="bi bi-building me-1"></i><strong>Branch:</strong> @(Model.Branch?.Name ?? "Not assigned")</span>
+                        @if (lending != null && lending.InTransfer)
+                        {
+                            <span><i class="bi bi-truck me-1"></i>Moving to @(lending.TransferDestination ?? "another branch")</span>
+                        }
+                        @if (lending != null && lending.QueueLength > 0)
+                        {
+                            <span><i class="bi bi-bookmark-star me-1"></i>@lending.QueueLength @(lending.QueueLength == 1 ? "person is" : "people are") waiting for this item@(lending.OnHoldShelf ? " (on the hold shelf)" : "")</span>
+                        }
+                    </div>
+
+                    @if (Model.Status != ItemStatus.Destroyed && (Model.Status != ItemStatus.Available || (lending != null && (lending.InTransfer || lending.QueueLength > 0))))
+                    {
+                        <div class="alert alert-info py-2 small">
+                            <i class="bi bi-info-circle me-1"></i>
+                            This item can't be borrowed right now. Place a hold at a self-service kiosk with your library card, or ask at the front desk, and you will be notified when it is ready.
+                        </div>
+                    }
+
                     @if (!string.IsNullOrEmpty(Model.Description))
                     {
                         <div class="bg-light p-3 rounded-3 mb-4 text-secondary">
@@ -163,6 +186,12 @@
                                 {
                                     <a asp-controller="Loans" asp-action="Issue" asp-route-libraryCode="@Model.LibraryCode" class="btn btn-sm btn-success">
                                         <i class="bi bi-box-arrow-right me-1"></i> Issue to Borrower
+                                    </a>
+                                }
+                                @if (Model.Status != ItemStatus.Destroyed)
+                                {
+                                    <a asp-controller="Reservations" asp-action="Create" asp-route-libraryCode="@Model.LibraryCode" class="btn btn-sm btn-outline-secondary">
+                                        <i class="bi bi-bookmark-star me-1"></i> Place Hold
                                     </a>
                                 }
                                 @if (User.IsInRole("Admin"))

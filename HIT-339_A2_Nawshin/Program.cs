@@ -62,9 +62,17 @@ builder.Services.Configure<KioskOptions>(builder.Configuration.GetSection(KioskO
 // [Moon] CSV bulk importer (Admin)
 builder.Services.AddScoped<Bibliotheca.Services.CsvImportService>();
 
-// Reservation summary shown on the kiosk account page.
-// Replace NoReservationSummaryProvider with the reservation module's implementation when it is ready.
-builder.Services.AddScoped<IReservationSummaryProvider, NoReservationSummaryProvider>();
+// Simulated notifications (borrow / due / fine / reservation-ready) and the background due-date reminder worker
+builder.Services.Configure<NotificationOptions>(builder.Configuration.GetSection(NotificationOptions.SectionName));
+builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddHostedService<DueReminderWorker>();
+
+// Reservations / waitlist and multi-branch transfers (shared by the kiosk and the reception desk)
+builder.Services.AddScoped<IReservationService, ReservationService>();
+builder.Services.AddScoped<ITransferService, TransferService>();
+
+// Reservation summary shown on the kiosk account page (fed by the reservation module).
+builder.Services.AddScoped<IReservationSummaryProvider, ReservationSummaryProvider>();
 
 // Kiosk patron sessions are kept in server memory (separate from the staff login cookie).
 builder.Services.AddDistributedMemoryCache();

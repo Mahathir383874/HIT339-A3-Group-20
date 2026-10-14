@@ -10,6 +10,8 @@ namespace Bibliotheca.Models.ViewModels
         public string? Genre { get; set; }
         public string? ToyType { get; set; }
         public string? SortBy { get; set; } = "name";
+        public int? BranchId { get; set; }
+        public List<Branch> Branches { get; set; } = new List<Branch>();
 
         public List<Item> Items { get; set; } = new List<Item>();
         public int TotalResults => Items.Count;

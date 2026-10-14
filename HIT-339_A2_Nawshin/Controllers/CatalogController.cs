@@ -13,10 +13,12 @@ namespace Bibliotheca.Controllers
     public class CatalogController : Controller
     {
         private readonly ApplicationDbContext _context;
+        private readonly IReservationService _reservations;
 
-        public CatalogController(ApplicationDbContext context)
+        public CatalogController(ApplicationDbContext context, IReservationService reservations)
         {
             _context = context;
+            _reservations = reservations;
         }
 
         // GET: /Catalog
@@ -26,9 +28,16 @@ namespace Bibliotheca.Controllers
             string? statusFilter = "All",
             string? genre = null,
             string? toyType = null,
-            string? sortBy = "name")
+            string? sortBy = "name",
+            int? branchId = null)
         {
-            IQueryable<Item> query = _context.Items;
+            IQueryable<Item> query = _context.Items.Include(i => i.Branch);
+
+            // 0. Filter by branch
+            if (branchId.HasValue)
+            {
+                query = query.Where(i => i.BranchId == branchId.Value);
+            }
 
             // 1. Filter by Category
             query = query.ApplyCategory(category);
@@ -89,6 +98,8 @@ namespace Bibliotheca.Controllers
                 Genre = genre,
                 ToyType = toyType,
                 SortBy = sortBy,
+                BranchId = branchId,
+                Branches = await _context.Branches.Where(b => b.IsActive).OrderBy(b => b.Name).ToListAsync(),
                 Items = items,
                 AvailableGenres = availableGenres,
                 AvailableToyTypes = availableToyTypes
@@ -106,6 +117,7 @@ namespace Bibliotheca.Controllers
             }
 
             var item = await _context.Items
+                .Include(i => i.Branch)
                 .Include(i => i.Loans.OrderByDescending(l => l.BorrowDate))
                 .FirstOrDefaultAsync(m => m.Id == id);
 
@@ -113,6 +125,10 @@ namespace Bibliotheca.Controllers
             {
                 return NotFound();
             }
+
+            // Hold queue length / transfer state (no patron details are exposed publicly)
+            var states = await _reservations.GetLendingStatesAsync(new[] { item.Id });
+            ViewBag.Lending = states.TryGetValue(item.Id, out var state) ? state : null;
 
             return View(item);
         }

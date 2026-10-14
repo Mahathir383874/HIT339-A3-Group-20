@@ -40,6 +40,13 @@ namespace Bibliotheca.Models.ViewModels
         public DateTime CreatedDate { get; init; }
     }
 
+    public class KioskNotificationRow
+    {
+        public string Subject { get; init; } = string.Empty;
+        public string Message { get; init; } = string.Empty;
+        public DateTime CreatedDate { get; init; }
+    }
+
     /// <summary>Account summary shown after a successful card lookup.</summary>
     public class KioskAccountViewModel
     {
@@ -55,6 +62,9 @@ namespace Bibliotheca.Models.ViewModels
         public bool ReservationsEnabled { get; set; }
         public IReadOnlyList<KioskReservationInfo> Reservations { get; set; } = Array.Empty<KioskReservationInfo>();
 
+        /// <summary>The patron's most recent (simulated) messages: loan confirmations, reminders, fines, holds.</summary>
+        public List<KioskNotificationRow> Notifications { get; set; } = new();
+
         public bool CanBorrow { get; set; }
         public string? BorrowBlockedReason { get; set; }
         public int MaxActiveLoans { get; set; }
@@ -67,7 +77,18 @@ namespace Bibliotheca.Models.ViewModels
         public bool AvailableOnly { get; set; }
         public bool HasSearched { get; set; }
         public bool IsPatronIdentified { get; set; }
+
+        /// <summary>Id of the signed-in patron (null when browsing without a card).</summary>
+        public int? PatronId { get; set; }
+
         public List<Item> Results { get; set; } = new();
+
+        /// <summary>Per item: hold queue / transfer state that decides whether an "Available" item can really be borrowed.</summary>
+        public Dictionary<int, ItemLendingState> LendingStates { get; set; } = new();
+
+        /// <summary>The signed-in patron's active holds, by item id.</summary>
+        public Dictionary<int, ReservationRow> MyHolds { get; set; } = new();
+
         public const int MaxResults = 30;
         public bool ResultsTruncated { get; set; }
     }
@@ -84,6 +105,9 @@ namespace Bibliotheca.Models.ViewModels
         public DateTime ProposedDueDate { get; set; }
         public string? ErrorMessage { get; set; }
         public bool CanConfirm => Item != null && ErrorMessage == null;
+
+        /// <summary>True when the item cannot be borrowed now but the patron can place a hold on it.</summary>
+        public bool CanOfferHold { get; set; }
     }
 
     public class KioskReceiptViewModel

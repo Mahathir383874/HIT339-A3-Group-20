@@ -1,0 +1,73 @@
+@model Bibliotheca.Models.ViewModels.TransferCreateViewModel
+@{
+    ViewData["Title"] = "Request Branch Transfer";
+}
+
+<div class="row justify-content-center py-3">
+    <div class="col-12 col-lg-8">
+        <div class="card-custom p-4 p-md-5 shadow-sm">
+            <div class="d-flex align-items-center justify-content-between border-bottom pb-3 mb-4">
+                <div>
+                    <span class="badge role-reception fw-bold text-uppercase px-2 py-1 mb-1">
+                        <i class="bi bi-truck me-1"></i> Multi-Branch Inventory
+                    </span>
+                    <h3 class="fw-bold mb-0">Request Transfer</h3>
+                </div>
+                <a asp-action="Index" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i> Back to Transfers
+                </a>
+            </div>
+
+            <p class="text-muted small">
+                Only items that are at a branch, not on loan and not already part of another transfer can be moved.
+                The source branch is the branch currently recorded for the item.
+            </p>
+
+            <form asp-action="Create" method="post">
+                @Html.AntiForgeryToken()
+                <div asp-validation-summary="ModelOnly" class="alert alert-danger py-2 small mb-3"></div>
+
+                <div class="row g-3">
+                    <div class="col-12 col-md-7">
+                        <label asp-for="ItemId" class="form-label fw-semibold small"></label>
+                        <select asp-for="ItemId" class="form-select" required>
+                            <option value="">-- Choose item --</option>
+                            @foreach (var item in Model.Items)
+                            {
+                                <option value="@item.Id" selected="@(Model.ItemId == item.Id)">[@item.LibraryCode] @item.Name - @item.Branch?.Name (@item.Status)</option>
+                            }
+                        </select>
+                        <span asp-validation-for="ItemId" class="text-danger small"></span>
+                    </div>
+
+                    <div class="col-12 col-md-5">
+                        <label asp-for="ToBranchId" class="form-label fw-semibold small"></label>
+                        <select asp-for="ToBranchId" class="form-select" required>
+                            <option value="">-- Choose destination --</option>
+                            @foreach (var branch in Model.Branches)
+                            {
+                                <option value="@branch.Id" selected="@(Model.ToBranchId == branch.Id)">@branch.Name</option>
+                            }
+                        </select>
+                        <span asp-validation-for="ToBranchId" class="text-danger small"></span>
+                    </div>
+
+                    <div class="col-12">
+                        <label asp-for="Notes" class="form-label fw-semibold small"></label>
+                        <input asp-for="Notes" class="form-control" maxlength="250" placeholder="e.g. Requested for a school display" />
+                        <span asp-validation-for="Notes" class="text-danger small"></span>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+                    <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+                    <button type="submit" class="btn btn-primary-custom"><i class="bi bi-send me-1"></i> Request Transfer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

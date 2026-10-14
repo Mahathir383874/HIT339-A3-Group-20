@@ -100,6 +100,40 @@
                         <div class="form-text small">Sets the item's new catalog inventory status upon return.</div>
                     </div>
 
+                    <!-- Branch where the item is checked in -->
+                    <div class="col-12 col-md-6">
+                        <label asp-for="ReturnBranchId" class="form-label fw-semibold small"></label>
+                        <select asp-for="ReturnBranchId" class="form-select">
+                            <option value="">Keep current branch</option>
+                            @foreach (var branch in Model.Branches)
+                            {
+                                <option value="@branch.Id" selected="@(Model.ReturnBranchId == branch.Id)">@branch.Name</option>
+                            }
+                        </select>
+                        <div class="form-text small">
+                            @if (!string.IsNullOrEmpty(Model.ItemBranchName))
+                            {
+                                <span>Item is recorded at <strong>@Model.ItemBranchName</strong>.</span>
+                            }
+                            @if (!string.IsNullOrEmpty(Model.DeskBranchName))
+                            {
+                                <span> Your desk: <strong>@Model.DeskBranchName</strong>.</span>
+                            }
+                            The item is checked in at the branch you choose.
+                        </div>
+                    </div>
+
+                    @if (Model.WaitingCount > 0)
+                    {
+                        <div class="col-12">
+                            <div class="alert alert-info py-2 small mb-0">
+                                <i class="bi bi-bookmark-star me-1"></i>
+                                <strong>@Model.WaitingCount</strong> patron@(Model.WaitingCount == 1 ? " is" : "s are") waiting for this item.
+                                If it is returned in Available condition the first patron in the queue is marked Ready and notified automatically.
+                            </div>
+                        </div>
+                    }
+
                     <!-- Fine Payment Handling -->
                     @if (isLate)
                     {

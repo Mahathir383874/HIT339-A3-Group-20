@@ -62,6 +62,11 @@
         @foreach (var item in Model.Results)
         {
             var available = item.Status == ItemStatus.Available;
+            var lending = Model.LendingStates.TryGetValue(item.Id, out var lendingState) ? lendingState : null;
+            var myHold = Model.MyHolds.TryGetValue(item.Id, out var holdRow) ? holdRow : null;
+            var borrowable = available && (lending == null || lending.IsBorrowableBy(Model.PatronId));
+            var heldForMe = borrowable && myHold != null;
+            var canHold = Model.IsPatronIdentified && !borrowable && myHold == null;
             <li class="kiosk-result">
                 <div class="kiosk-result-img" aria-hidden="true">
                     @if (!string.IsNullOrEmpty(item.ImageUrl))
@@ -76,9 +81,9 @@
                     <span class="kiosk-item-meta">@item.CategoryLine() · @item.LibraryCode</span>
                 </div>
                 <div class="kiosk-result-action">
-                    @if (available)
+                    @if (borrowable)
                     {
-                        <span class="kiosk-badge kiosk-badge-ok"><i class="bi bi-check-circle-fill" aria-hidden="true"></i> Available</span>
+                        <span class="kiosk-badge kiosk-badge-ok"><i class="bi bi-check-circle-fill" aria-hidden="true"></i> @(heldForMe ? "Ready for you" : "Available")</span>
                         @if (Model.IsPatronIdentified)
                         {
                             <a asp-action="Checkout" asp-route-code="@item.LibraryCode" class="kiosk-btn kiosk-btn-primary">
@@ -88,7 +93,31 @@
                     }
                     else
                     {
-                        <span class="kiosk-badge kiosk-badge-neutral">@(item.Status == ItemStatus.Borrowed ? "On loan" : "Unavailable")</span>
+                        @if (available)
+                        {
+                            <span class="kiosk-badge kiosk-badge-neutral">@(lending != null && lending.InTransfer ? "Moving between branches" : "On hold shelf")</span>
+                        }
+                        else
+                        {
+                            <span class="kiosk-badge kiosk-badge-neutral">@(item.Status == ItemStatus.Borrowed ? "On loan" : "Unavailable")</span>
+                        }
+
+                        @if (myHold != null)
+                        {
+                            <span class="kiosk-item-meta">Your hold: @(myHold.Status == ReservationStatus.Ready ? "ready for pickup" : "position " + myHold.QueuePosition)</span>
+                        }
+                        else if (canHold)
+                        {
+                            <form asp-action="PlaceHold" method="post" class="m-0">
+                                <input type="hidden" name="code" value="@item.LibraryCode" />
+                                <button type="submit" class="kiosk-btn kiosk-btn-outline" data-once>Place hold</button>
+                            </form>
+                        }
+
+                        @if (lending != null && lending.QueueLength > 0)
+                        {
+                            <span class="kiosk-item-meta">@lending.QueueLength waiting</span>
+                        }
                     }
                 </div>
             </li>

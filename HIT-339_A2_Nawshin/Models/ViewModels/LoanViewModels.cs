@@ -53,6 +53,18 @@ namespace Bibliotheca.Models.ViewModels
         [Display(Name = "Return Remarks")]
         [StringLength(250)]
         public string? Remarks { get; set; }
+
+        // ---- Branch-aware returns (reception desks) ----
+        [Display(Name = "Returned to Branch")]
+        public int? ReturnBranchId { get; set; }
+
+        public string? ItemBranchName { get; set; }
+        public string? DeskBranchName { get; set; }
+
+        /// <summary>Patrons waiting in the hold queue for this item.</summary>
+        public int WaitingCount { get; set; }
+
+        public List<Branch> Branches { get; set; } = new();
     }
 
     public class PayFineViewModel

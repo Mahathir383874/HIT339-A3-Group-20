@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Bibliotheca.Data;
@@ -14,21 +15,39 @@ namespace Bibliotheca.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly ICirculationService _circulation;
+        private readonly IReservationService _reservations;
+        private readonly INotificationService _notifications;
+        private readonly UserManager<ApplicationUser> _userManager;
         private const decimal DAILY_FINE_RATE = 1.00m; // $1.00 per day overdue
 
-        public LoansController(ApplicationDbContext context, ICirculationService circulation)
+        public LoansController(
+            ApplicationDbContext context,
+            ICirculationService circulation,
+            IReservationService reservations,
+            INotificationService notifications,
+            UserManager<ApplicationUser> userManager)
         {
             _context = context;
             _circulation = circulation;
+            _reservations = reservations;
+            _notifications = notifications;
+            _userManager = userManager;
         }
 
         // GET: /Loans
-        public async Task<IActionResult> Index(string? filter = "Active", string? searchTerm = null)
+        public async Task<IActionResult> Index(string? filter = "Active", string? searchTerm = null, int? branchId = null)
         {
             IQueryable<Loan> query = _context.Loans
                 .Include(l => l.Item)
+                    .ThenInclude(i => i!.Branch)
                 .Include(l => l.Borrower)
                 .Include(l => l.Fine);
+
+            // Branch filter: loans of items currently held at the chosen branch
+            if (branchId.HasValue)
+            {
+                query = query.Where(l => l.Item != null && l.Item.BranchId == branchId.Value);
+            }
 
             // Filter by status tab
             query = filter switch
@@ -53,6 +72,8 @@ namespace Bibliotheca.Controllers
 
             ViewBag.ActiveFilter = filter;
             ViewBag.SearchTerm = searchTerm;
+            ViewBag.BranchId = branchId;
+            ViewBag.Branches = await _context.Branches.OrderBy(b => b.Name).ToListAsync();
 
             var loans = await query.OrderByDescending(l => l.BorrowDate).ToListAsync();
 
@@ -144,6 +165,7 @@ namespace Bibliotheca.Controllers
 
             var loan = await _context.Loans
                 .Include(l => l.Item)
+                    .ThenInclude(i => i!.Branch)
                 .Include(l => l.Borrower)
                 .FirstOrDefaultAsync(l => l.Id == id);
 
@@ -183,6 +205,17 @@ namespace Bibliotheca.Controllers
                 PayFineImmediately = fineAmount > 0
             };
 
+            // Branch-aware desk: the item is checked in at the branch of the desk the staff member works at
+            var branches = await _context.Branches.Where(b => b.IsActive).OrderBy(b => b.Name).ToListAsync();
+            var staff = await _userManager.GetUserAsync(User);
+            var deskBranch = staff?.DeskBranchId != null ? branches.FirstOrDefault(b => b.Id == staff.DeskBranchId.Value) : null;
+
+            model.Branches = branches;
+            model.ItemBranchName = loan.Item?.Branch?.Name;
+            model.DeskBranchName = deskBranch?.Name;
+            model.ReturnBranchId = deskBranch?.Id ?? loan.Item?.BranchId;
+            model.WaitingCount = await _reservations.GetQueueLengthAsync(loan.ItemId);
+
             return View(model);
         }
 
@@ -198,6 +231,12 @@ namespace Bibliotheca.Controllers
 
             if (loan == null) return NotFound();
 
+            if (loan.Status == LoanStatus.Returned)
+            {
+                TempData["InfoMessage"] = "This item has already been returned.";
+                return RedirectToAction(nameof(Index));
+            }
+
             var returnDate = DateTime.UtcNow;
             loan.ReturnDate = returnDate;
             loan.Status = LoanStatus.Returned;
@@ -207,6 +246,16 @@ namespace Bibliotheca.Controllers
             if (loan.Item != null)
             {
                 loan.Item.Status = model.NewItemStatus;
+
+                // The item is checked in at the chosen branch (defaults to the desk the staff member works at)
+                if (model.ReturnBranchId.HasValue && loan.Item.BranchId != model.ReturnBranchId.Value)
+                {
+                    var returnBranch = await _context.Branches.FirstOrDefaultAsync(b => b.Id == model.ReturnBranchId.Value && b.IsActive);
+                    if (returnBranch != null)
+                    {
+                        loan.Item.BranchId = returnBranch.Id;
+                    }
+                }
             }
 
             // Handle Overdue Late Fine
@@ -230,6 +279,12 @@ namespace Bibliotheca.Controllers
 
                 _context.Fines.Add(fine);
 
+                // Simulated "late fine recorded" notification, saved together with the return
+                if (loan.Borrower != null)
+                {
+                    _notifications.StageFineIssued(loan.Borrower, loan.Item, loan, fine);
+                }
+
                 if (model.PayFineImmediately)
                 {
                     TempData["SuccessMessage"] = $"Item returned successfully. Late fine of ${fineAmount:F2} ({daysLate} days overdue) was marked as PAID.";
@@ -245,6 +300,16 @@ namespace Bibliotheca.Controllers
             }
 
             await _context.SaveChangesAsync();
+
+            // If patrons are waiting for this item the first one becomes Ready (and is notified);
+            // a destroyed item cancels its holds instead. Nothing happens for damaged items until they are repaired.
+            var promoted = await _reservations.AdvanceQueueAsync(loan.ItemId);
+            if (promoted?.Borrower != null)
+            {
+                TempData["InfoMessage"] = $"Hold queue advanced: {promoted.Borrower.FullName} (card {promoted.Borrower.CardNumber}) is next in line. " +
+                                          "The reservation is now Ready and a notification was logged.";
+            }
+
             return RedirectToAction(nameof(Index));
         }
 
@@ -276,6 +341,8 @@ namespace Bibliotheca.Controllers
         {
             var fine = await _context.Fines
                 .Include(f => f.Borrower)
+                .Include(f => f.Loan)
+                    .ThenInclude(l => l!.Item)
                 .FirstOrDefaultAsync(f => f.Id == id);
 
             if (fine == null) return NotFound();
@@ -288,6 +355,11 @@ namespace Bibliotheca.Controllers
 
             fine.IsPaid = true;
             fine.PaidDate = DateTime.UtcNow;
+
+            if (fine.Borrower != null)
+            {
+                _notifications.StageFinePaid(fine.Borrower, fine.Loan?.Item, fine);
+            }
 
             await _context.SaveChangesAsync();
             TempData["SuccessMessage"] = $"Fine of ${fine.Amount:F2} for borrower {fine.Borrower?.FullName} marked as paid.";

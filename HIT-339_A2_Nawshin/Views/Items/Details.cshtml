@@ -1,6 +1,8 @@
 @model Bibliotheca.Models.Entities.Item
 @{
     ViewData["Title"] = $"Admin Item Details - {Model.Name}";
+    var queue = (ViewBag.Queue as IEnumerable<ReservationRow>) ?? Enumerable.Empty<ReservationRow>();
+    var transfers = (ViewBag.Transfers as IEnumerable<BranchTransfer>) ?? Enumerable.Empty<BranchTransfer>();
     var statusBadgeClass = Model.Status switch
     {
         ItemStatus.Available => "badge-available",
@@ -52,6 +54,10 @@
                 <div class="col-6 col-sm-4">
                     <div class="text-muted small">Date Registered</div>
                     <div class="fw-bold text-dark">@Model.CreatedDate.ToString("d MMM yyyy")</div>
+                </div>
+                <div class="col-6 col-sm-4">
+                    <div class="text-muted small">Branch</div>
+                    <div class="fw-bold text-dark">@(Model.Branch?.Name ?? "Not assigned")</div>
                 </div>
 
                 @if (Model is Book book)
@@ -152,6 +158,69 @@
                                     <div>Returned: @loan.ReturnDate.Value.ToString("d MMM yyyy")</div>
                                 }
                             </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mt-1">
+    <!-- Hold queue -->
+    <div class="col-12 col-lg-6">
+        <div class="card-custom p-4 h-100">
+            <h5 class="fw-bold border-bottom pb-2 mb-3">
+                <i class="bi bi-bookmark-star me-1 text-primary"></i> Hold Queue
+            </h5>
+            @if (!queue.Any())
+            {
+                <p class="text-muted small text-center py-3 mb-0">Nobody is waiting for this item.</p>
+            }
+            else
+            {
+                <ol class="list-group list-group-numbered list-group-flush">
+                    @foreach (var hold in queue)
+                    {
+                        <li class="list-group-item d-flex justify-content-between align-items-start px-0">
+                            <div class="ms-2 me-auto">
+                                <div class="fw-semibold">@hold.BorrowerName <span class="badge bg-light text-secondary border font-monospace">@hold.CardNumber</span></div>
+                                <div class="small text-muted">Placed @hold.CreatedDate.ToString("d MMM yyyy") @(string.IsNullOrEmpty(hold.PlacedVia) ? "" : "via " + hold.PlacedVia)</div>
+                            </div>
+                            <span class="badge @(hold.Status == ReservationStatus.Ready ? "bg-success" : "bg-secondary")">@(hold.Status == ReservationStatus.Ready ? "Ready" : "Waiting")</span>
+                        </li>
+                    }
+                </ol>
+            }
+            <div class="mt-3">
+                <a asp-controller="Reservations" asp-action="Create" asp-route-libraryCode="@Model.LibraryCode" class="btn btn-sm btn-outline-custom">
+                    <i class="bi bi-plus-circle me-1"></i> Place a hold
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transfer history -->
+    <div class="col-12 col-lg-6">
+        <div class="card-custom p-4 h-100">
+            <h5 class="fw-bold border-bottom pb-2 mb-3">
+                <i class="bi bi-truck me-1 text-primary"></i> Branch Transfer History
+            </h5>
+            @if (!transfers.Any())
+            {
+                <p class="text-muted small text-center py-3 mb-0">This item has never been transferred between branches.</p>
+            }
+            else
+            {
+                <div class="list-group list-group-flush">
+                    @foreach (var transfer in transfers)
+                    {
+                        <div class="list-group-item px-0">
+                            <div class="d-flex justify-content-between">
+                                <span class="fw-semibold">@transfer.FromBranch?.Name &rarr; @transfer.ToBranch?.Name</span>
+                                <span class="badge @(transfer.Status == TransferStatus.Completed ? "bg-success" : transfer.Status == TransferStatus.Cancelled ? "bg-secondary" : transfer.Status == TransferStatus.InTransit ? "bg-warning text-dark" : "bg-primary")">@transfer.Status</span>
+                            </div>
+                            <div class="small text-muted">Requested @transfer.RequestedDate.ToString("d MMM yyyy")@(string.IsNullOrEmpty(transfer.RequestedBy) ? "" : " by " + transfer.RequestedBy)</div>
                         </div>
                     }
                 </div>

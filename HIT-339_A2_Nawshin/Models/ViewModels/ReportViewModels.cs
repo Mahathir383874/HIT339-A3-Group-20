@@ -36,6 +36,8 @@ namespace Bibliotheca.Models.ViewModels
     {
         public DateTime? From { get; set; }
         public DateTime? To { get; set; }
+        public int? BranchId { get; set; }
+        public List<Bibliotheca.Models.Entities.Branch> Branches { get; set; } = new List<Bibliotheca.Models.Entities.Branch>();
         public ReportDocument Borrowing { get; set; } = new ReportDocument();
         public ReportDocument Fines { get; set; } = new ReportDocument();
         public ReportDocument Inventory { get; set; } = new ReportDocument();
@@ -49,6 +51,7 @@ namespace Bibliotheca.Models.ViewModels
         public bool UsesDateFilter { get; set; }
         public string? From { get; set; }
         public string? To { get; set; }
+        public int? BranchId { get; set; }
         public ReportDocument Document { get; set; } = new ReportDocument();
     }
 }
