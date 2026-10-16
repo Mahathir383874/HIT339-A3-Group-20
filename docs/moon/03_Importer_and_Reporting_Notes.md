@@ -1,5 +1,7 @@
 # Moon – Importer and Reporting Notes
 
+**Name:** Mishkatuz Zannat Moon · **Student ID:** 385411 · **Unit:** HIT339 Group Project
+
 ## Part 1: CSV importer
 
 **Where:** sign in as **Admin** (`admin@bibliotheca.com`) → *Item Management* → *Bulk Import (CSV)*, or `/Import`.  
@@ -34,11 +36,11 @@ Column order does not matter, columns are matched by header name. Unknown column
 - **Duplicates:** a library code that already exists in the catalogue, or one repeated earlier in the same file (the first valid row wins).
 - **File rules:** not empty, not binary, valid CSV (quotes closed), required columns present, at least one data row, at most 1,000 data rows, at most 512 KB, `.csv` extension.
 
-### Expected results for the sample files (`docs/moon/sample-data/`)
+### Results for the sample files (`docs/moon/sample-data/`)
 
-These expected results assume the original seeded catalogue (codes `BOK-1001` to `TOY-3004`).
+I ran every one of these files on the site and got the results below. They assume the original seeded catalogue (codes `BOK-1001` to `TOY-3004`).
 
-| File | Expected outcome |
+| File | Result |
 |---|---|
 | `valid_import.csv` | 5 rows, all valid. Import adds 2 books, 1 music album, 2 toys. Uploading it again shows 5 duplicates. |
 | `mixed_import.csv` | 10 rows: **3 valid** (rows 2, 3, 9), **5 invalid** (row 4 missing author and bad code, row 7 unknown type, row 8 text page count, row 10 release year 1800, row 11 bad cost and image URL), **2 duplicate** (row 5 exists in catalogue, row 6 repeats row 2's code). Import adds only the 3 valid rows. |
@@ -58,7 +60,7 @@ These expected results assume the original seeded catalogue (codes `BOK-1001` to
 
 ### Not done (and why)
 
-- The brief offers CSV upload **or** a mock external metadata provider. Only CSV was built, which satisfies the guide. A mock provider could be added later as another action on `ImportController`.
+- The brief offers CSV upload **or** a mock external metadata provider. Only CSV was built, which satisfies the guide. A mock provider could be added as another action on `ImportController`.
 
 ---
 
@@ -95,9 +97,9 @@ Definitions used:
 - Empty reports still export, with "No ... in this period" messages.
 - Only Manager and Admin can use the page and the export links.
 
-### Adding branch filtering later (REQ-ANA-06)
+### Branch filtering (REQ-ANA-06)
 
-After Taief's branch model is merged, add an optional branch id to `ReportsController.Index/Export` and to the `BuildXxxAsync` methods in `ReportService`, filter the loaded loans, items and fines by the item's branch before the figures are calculated, and add a drop-down to `Views/Reports/Index.cshtml`. The exporters do not need to change.
+I didn't build this because it needs the multi-branch model, which is Taief's part. The reports are built so it is easy to add: add an optional branch id to `ReportsController.Index/Export` and to the `BuildXxxAsync` methods in `ReportService`, filter the loaded loans, items and fines by the item's branch before the figures are calculated, and add a drop-down to `Views/Reports/Index.cshtml`. The exporters do not need to change.
 
 ### Licence note
 
@@ -105,9 +107,9 @@ PDF export uses QuestPDF under its Community licence, which allows free use for 
 
 ---
 
-## Part 3: README text for the team README
+## Part 3: README text
 
-Suggested lines for the "how to test the modules" section of the main `README.md` (Achintha owns the README setup):
+These are the lines I added to the "how to test the modules" section of the main `README.md`:
 
 ```markdown
 ### API, importer and reports (Moon)
@@ -115,3 +117,4 @@ Suggested lines for the "how to test the modules" section of the main `README.md
 - CSV import: sign in as Admin → Item Management → Bulk Import (CSV). Sample files are in `docs/moon/sample-data/`.
 - Reports and export: sign in as Manager → Reports & Export. Use the Export CSV / Export PDF buttons on each report.
 ```
+
