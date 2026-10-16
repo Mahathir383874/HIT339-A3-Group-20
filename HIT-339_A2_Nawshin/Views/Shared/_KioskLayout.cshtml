@@ -1,0 +1,106 @@
+@using Microsoft.Extensions.Options
+@using Bibliotheca.Services
+@inject IOptions<KioskOptions> KioskSettings
+@{
+    var kiosk = KioskSettings.Value;
+    var patronName = ViewData["KioskPatronName"] as string;
+    var isIdentified = !string.IsNullOrEmpty(patronName);
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="robots" content="noindex" />
+    <title>@ViewData["Title"] - Self-Service Kiosk</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+    <link rel="stylesheet" href="~/css/kiosk.css" asp-append-version="true" />
+</head>
+<body class="kiosk-body"
+      data-kiosk-identified="@(isIdentified ? "true" : "false")"
+      data-kiosk-idle-seconds="@kiosk.IdleTimeoutSeconds"
+      data-kiosk-warning-seconds="@kiosk.IdleWarningSeconds">
+
+    <a class="kiosk-skip" href="#kiosk-main">Skip to main content</a>
+
+    <header class="kiosk-header">
+        <a class="kiosk-brand" asp-controller="Kiosk" asp-action="Index" aria-label="Kiosk home">
+            <i class="bi bi-book-half" aria-hidden="true"></i>
+            <span>
+                <strong>Bibliotheca</strong>
+                <small>@kiosk.BranchName · Self-Service</small>
+            </span>
+        </a>
+
+        <div class="kiosk-header-right">
+            <span class="kiosk-clock" id="kiosk-clock" aria-hidden="true"></span>
+            @if (isIdentified)
+            {
+                <span class="kiosk-patron"><i class="bi bi-person-circle" aria-hidden="true"></i> Hi, @patronName</span>
+                <form asp-controller="Kiosk" asp-action="End" method="post" id="kiosk-end-form" class="m-0">
+                    <input type="hidden" name="timedOut" value="false" id="kiosk-timed-out" />
+                    <button type="submit" class="kiosk-btn kiosk-btn-end">
+                        <i class="bi bi-box-arrow-right" aria-hidden="true"></i> End session
+                    </button>
+                </form>
+            }
+        </div>
+    </header>
+
+    @if (isIdentified)
+    {
+        <nav class="kiosk-nav" aria-label="Kiosk">
+            <a asp-controller="Kiosk" asp-action="Account" class="kiosk-nav-link @(ViewContext.RouteData.Values["action"]?.ToString() == "Account" ? "active" : "")">
+                <i class="bi bi-person-vcard" aria-hidden="true"></i> My account
+            </a>
+            <a asp-controller="Kiosk" asp-action="Search" class="kiosk-nav-link @(ViewContext.RouteData.Values["action"]?.ToString() == "Search" ? "active" : "")">
+                <i class="bi bi-search" aria-hidden="true"></i> Search catalogue
+            </a>
+            <a asp-controller="Kiosk" asp-action="Checkout" class="kiosk-nav-link @(ViewContext.RouteData.Values["action"]?.ToString() == "Checkout" ? "active" : "")">
+                <i class="bi bi-upc-scan" aria-hidden="true"></i> Borrow an item
+            </a>
+        </nav>
+    }
+
+    <main id="kiosk-main" class="kiosk-main" tabindex="-1">
+        @if (TempData["KioskInfo"] is string info)
+        {
+            <div class="kiosk-alert kiosk-alert-info" role="status">
+                <i class="bi bi-info-circle-fill" aria-hidden="true"></i> @info
+            </div>
+        }
+        @RenderBody()
+    </main>
+
+    <footer class="kiosk-footer">
+        <span><i class="bi bi-question-circle" aria-hidden="true"></i> Need help? Please ask at the front desk.</span>
+        @if (isIdentified)
+        {
+            <span>For your privacy, please tap <strong>End session</strong> when you're finished.</span>
+        }
+    </footer>
+
+    @if (isIdentified)
+    {
+        <div class="kiosk-idle" id="kiosk-idle" role="alertdialog" aria-modal="true" aria-labelledby="kiosk-idle-title" hidden>
+            <div class="kiosk-idle-card">
+                <i class="bi bi-hourglass-split kiosk-idle-icon" aria-hidden="true"></i>
+                <h2 id="kiosk-idle-title">Are you still there?</h2>
+                <p>Your session will end in <strong id="kiosk-idle-count">@kiosk.IdleWarningSeconds</strong> seconds to protect your account.</p>
+                <div class="kiosk-actions-row">
+                    <button type="button" class="kiosk-btn kiosk-btn-primary kiosk-btn-lg" id="kiosk-idle-stay">
+                        <i class="bi bi-hand-index-thumb" aria-hidden="true"></i> I'm still here
+                    </button>
+                    <button type="button" class="kiosk-btn kiosk-btn-outline kiosk-btn-lg" id="kiosk-idle-end">
+                        End now
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+
+    <script src="~/js/kiosk.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

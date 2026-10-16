@@ -1,0 +1,35 @@
+@model KioskReceiptViewModel
+@{
+    ViewData["Title"] = "Item borrowed";
+}
+
+<section class="kiosk-card kiosk-receipt" aria-labelledby="receipt-heading">
+    <div class="kiosk-receipt-icon" aria-hidden="true"><i class="bi bi-check-circle-fill"></i></div>
+    <h1 id="receipt-heading" class="kiosk-title">You're all set, @Model.FirstName!</h1>
+    <p class="kiosk-lead">You have borrowed:</p>
+
+    <div class="kiosk-receipt-item">
+        <span class="kiosk-item-name kiosk-item-name-lg">@Model.ItemName</span>
+        <span class="kiosk-item-meta">@Model.ItemType · @Model.LibraryCode</span>
+    </div>
+
+    <p class="kiosk-due kiosk-due-lg">
+        <i class="bi bi-calendar-event" aria-hidden="true"></i>
+        Please return it by <strong>@Model.DueDate.ToLocalTime().ToString("dddd d MMMM yyyy")</strong>
+    </p>
+    <p class="kiosk-help">You now have @Model.ItemsOnLoan item@(Model.ItemsOnLoan == 1 ? "" : "s") on loan. Late returns are charged $1.00 per day.</p>
+
+    <div class="kiosk-actions-row justify-content-center">
+        <a asp-action="Checkout" class="kiosk-btn kiosk-btn-primary kiosk-btn-lg">
+            <i class="bi bi-plus-circle" aria-hidden="true"></i> Borrow another item
+        </a>
+        <a asp-action="Account" class="kiosk-btn kiosk-btn-outline kiosk-btn-lg">
+            <i class="bi bi-person-vcard" aria-hidden="true"></i> My account
+        </a>
+        <form asp-action="End" method="post" class="m-0">
+            <button type="submit" class="kiosk-btn kiosk-btn-end kiosk-btn-lg">
+                <i class="bi bi-box-arrow-right" aria-hidden="true"></i> I'm done
+            </button>
+        </form>
+    </div>
+</section>
