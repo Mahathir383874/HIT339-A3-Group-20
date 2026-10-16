@@ -59,6 +59,9 @@ builder.Services.AddSession(options =>
     options.IdleTimeout = TimeSpan.FromSeconds(Math.Max(60, kiosk.IdleTimeoutSeconds + kiosk.IdleWarningSeconds + 30));
 });
 
+// [Moon] Manager reports and CSV/PDF export
+builder.Services.AddScoped<Bibliotheca.Services.ReportService>();
+
 var app = builder.Build();
 
 // 6. Auto-Initialize & Seed Database on Startup

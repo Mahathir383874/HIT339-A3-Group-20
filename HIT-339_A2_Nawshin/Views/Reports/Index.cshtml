@@ -1,0 +1,73 @@
+@using Bibliotheca.Models.ViewModels
+@model ReportsPageViewModel
+@{
+    ViewData["Title"] = "Manager Reports & Export";
+    var fromText = Model.From?.ToString("yyyy-MM-dd");
+    var toText = Model.To?.ToString("yyyy-MM-dd");
+}
+
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    <div>
+        <span class="badge role-manager mb-1"><i class="bi bi-file-earmark-bar-graph me-1"></i> Manager Reports</span>
+        <h2 class="fw-bold mb-0">Reports &amp; Export</h2>
+        <p class="text-muted small mb-0">Borrowing statistics, fine revenue audit and inventory health. Every report can be exported as CSV or PDF.</p>
+    </div>
+    <a class="btn btn-outline-custom" asp-controller="Manager" asp-action="Index"><i class="bi bi-graph-up-arrow me-1"></i> Back to dashboard</a>
+</div>
+
+<div class="card-custom p-3 mb-4">
+    <form asp-action="Index" method="get" class="row g-2 align-items-end">
+        <div class="col-6 col-md-3">
+            <label for="from" class="form-label small mb-1">From date</label>
+            <input type="date" id="from" name="from" class="form-control form-control-sm" value="@fromText" />
+        </div>
+        <div class="col-6 col-md-3">
+            <label for="to" class="form-label small mb-1">To date (inclusive)</label>
+            <input type="date" id="to" name="to" class="form-control form-control-sm" value="@toText" />
+        </div>
+        <div class="col-12 col-md-auto d-flex gap-2">
+            <button type="submit" class="btn btn-sm btn-primary-custom"><i class="bi bi-funnel me-1"></i> Apply filter</button>
+            <a class="btn btn-sm btn-outline-custom" asp-action="Index">Clear</a>
+        </div>
+        <div class="col-12 small text-muted">
+            The date filter applies to the borrowing report (loan date) and the fines report (date the fine was incurred).
+            The inventory report is always a snapshot of the catalogue today.
+        </div>
+    </form>
+</div>
+
+<ul class="nav nav-pills mb-3">
+    <li class="nav-item"><a class="nav-link" href="#borrowing">Borrowing</a></li>
+    <li class="nav-item"><a class="nav-link" href="#fines">Fines</a></li>
+    <li class="nav-item"><a class="nav-link" href="#inventory">Inventory health</a></li>
+</ul>
+
+@await Html.PartialAsync("_ReportCard", new ReportCardViewModel
+{
+    Kind = "Borrowing",
+    Icon = "bi-journal-check",
+    UsesDateFilter = true,
+    From = fromText,
+    To = toText,
+    Document = Model.Borrowing
+})
+
+@await Html.PartialAsync("_ReportCard", new ReportCardViewModel
+{
+    Kind = "Fines",
+    Icon = "bi-cash-coin",
+    UsesDateFilter = true,
+    From = fromText,
+    To = toText,
+    Document = Model.Fines
+})
+
+@await Html.PartialAsync("_ReportCard", new ReportCardViewModel
+{
+    Kind = "Inventory",
+    Icon = "bi-box-seam",
+    UsesDateFilter = false,
+    From = fromText,
+    To = toText,
+    Document = Model.Inventory
+})
