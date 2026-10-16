@@ -5,6 +5,14 @@ Owner: Achintha Fernando (S390909) · Module: Public Self-Service Kiosk (`/Kiosk
 Start from a clean database (`setup.cmd -ResetDatabase` or delete `bibliotheca.db*`) so the seeded data below is in place.
 Record the actual result and a screenshot file name for each test. Record **actual** hours in your task log as you go.
 
+## Test runs
+
+| Run | Date | Machine | Tests covered |
+| :-- | :-- | :-- | :-- |
+| 1 | 16/10/2026 | CDU IT Desktop (Windows 10), during the installation test | Pass: K-01, K-03, K-08, K-16 · Partial: K-13, K-24 (screenshots in `docs/evidence/vm-test/`) |
+
+Rows without a result have not been run yet.
+
 ## Seeded test data
 
 | Card | Patron | State at start | Use it to test |
@@ -25,22 +33,22 @@ Record the actual result and a screenshot file name for each test. Record **actu
 
 | ID | Area | Steps | Expected result | Actual result | Evidence |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| K-01 | Route | Open `/Kiosk` from a clean run | Kiosk welcome screen with keypad, location name in header, no staff menus | | |
+| K-01 | Route | Open `/Kiosk` from a clean run | Kiosk welcome screen with keypad, location name in header, no staff menus | Pass (run 1) – kiosk welcome screen opened with keypad and "Darwin City Library" in the header; no staff menu | vm-09-kiosk-welcome.png |
 | K-02 | Lookup – empty | Tap **Continue** with an empty box | "Please scan or type your library card number." | | |
-| K-03 | Lookup – invalid | Enter `CRD-9999` | "We couldn't find that library card…" and stays on welcome screen | | |
+| K-03 | Lookup – invalid | Enter `CRD-9999` | "We couldn't find that library card…" and stays on welcome screen | Pass (run 1) – `CRD 1002` (space instead of dash) showed "We couldn't find that library card…" | vm-10-kiosk-invalid-card.png |
 | K-04 | Lookup – valid | Use keypad: **CRD-**, 1, 0, 0, 2, **Continue** | "Hello, Emma" account page | | |
 | K-05 | Lookup – case | Enter `crd-1002` (lower case) | Same as K-04 | | |
 | K-06 | Lookup – inactive | Reception edits a borrower → set *Account Status* to inactive; enter that card | "This library card is not active…" | | |
 | K-07 | Lockout | Enter 5 wrong card numbers in a row | "Too many unsuccessful attempts", box disabled, countdown, unlocks after 60 s | | |
-| K-08 | Account summary | Log in with `CRD-1002` | 1 item on loan with due date; unpaid fines $0.00; reservations note; card shown as `•••• 1002`; no email/phone/address | | |
+| K-08 | Account summary | Log in with `CRD-1002` | 1 item on loan with due date; unpaid fines $0.00; reservations note; card shown as `•••• 1002`; no email/phone/address | Pass (run 1) – "Hello, Emma", card shown as •••• 1002, Kind of Blue due 27 Oct 2026, $0.00 fines, reservations note; no email/phone/address shown | vm-11-kiosk-account-emma.png |
 | K-09 | Overdue | Log in with `CRD-1001` | *The Hobbit* marked overdue with days and "fine so far"; "Self-service borrowing is paused" banner | | |
 | K-10 | Unpaid fines shown | Reception returns *The Hobbit* for CRD-1001 **without** paying the fine; then log in with `CRD-1001` at kiosk | Fine listed under *Unpaid fines* with the amount | | |
 | K-11 | Search – title | Search `hobbit` | *The Hobbit* shown as "On loan", no Borrow button | | |
 | K-12 | Search – author | Search `orwell` | *1984* shown | | |
-| K-13 | Search – category | Tap **Toys & games** | Only toys listed; available ones have **Borrow** | | |
+| K-13 | Search – category | Tap **Toys & games** | Only toys listed; available ones have **Borrow** | Partial (run 1) – Toys & games filter works (search "Catan" + Toys & games returned 1 toy); full list of toys with Borrow buttons not captured – repeat | vm-13-kiosk-after-end-session.png |
 | K-14 | Search – no results | Search `zzzz` | "No items matched your search…" | | |
 | K-15 | Search – anonymous | Without a card, tap **Just browse the catalogue** | Search works; button says "Scan card to borrow"; no Borrow buttons | | |
-| K-16 | Checkout – available | As CRD-1002, Search → Borrow `TOY-3002` → **Confirm and borrow** | Receipt with item, due date 14 days ahead, "2 items on loan"; item now "On loan" in search and in Reception *Active Loans* | | |
+| K-16 | Checkout – available | As CRD-1002, Search → Borrow `TOY-3002` → **Confirm and borrow** | Receipt with item, due date 14 days ahead, "2 items on loan"; item now "On loan" in search and in Reception *Active Loans* | Pass (run 1) – borrowed TOY-3002 Catan Board Game; receipt due Friday 30 Oct 2026, "2 items on loan"; listed in Reception → Active Loans | vm-12-kiosk-receipt-catan.png, vm-14-reception-active-loans.png |
 | K-17 | Checkout – by code | Borrow an item → type `BOK-1005` → **Find item** → **Confirm** | Receipt shown | | |
 | K-18 | Checkout – borrowed item | Borrow an item → `BOK-1002` | "…is already on loan to someone else…", no Confirm button | | |
 | K-19 | Checkout – damaged item | Borrow an item → `BOK-1004` | "…is being repaired…", no Confirm button | | |
@@ -48,7 +56,7 @@ Record the actual result and a screenshot file name for each test. Record **actu
 | K-21 | Checkout – blocked patron | As CRD-1001, Borrow an item → `TOY-3001` | Overdue message, no Confirm button | | |
 | K-22 | Checkout – limit | As CRD-1004, borrow 5 items, then try a 6th | "You have reached the self-service limit of 5 items" | | |
 | K-23 | Double tap | Tap **Confirm and borrow** twice quickly | Only one loan is created | | |
-| K-24 | End session | Tap **End session** | "You're signed out" on welcome screen | | |
+| K-24 | End session | Tap **End session** | "You're signed out" on welcome screen | Partial (run 1) – after End session the kiosk shows no patron signed in ("Scan card to borrow"); the "You're signed out" message itself was not screenshotted – repeat | vm-13-kiosk-after-end-session.png |
 | K-25 | Back button | After K-24 press the browser **Back** button | Previous patron's account is **not** shown (redirects to welcome) | | |
 | K-26 | Idle timeout | Log in and leave the kiosk untouched for 90 s | "Are you still there?" overlay with countdown; after 15 s returns to welcome with "…kiosk was idle…" | | |
 | K-27 | Idle – stay | When the overlay appears tap **I'm still here** | Overlay closes, session continues | | |
