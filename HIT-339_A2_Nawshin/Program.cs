@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Bibliotheca.Data;
 using Bibliotheca.Models.Entities;
+using Bibliotheca.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -38,9 +39,29 @@ builder.Services.ConfigureApplicationCookie(options =>
 // 4. Add MVC Controllers and Views
 builder.Services.AddControllersWithViews();
 
+// 5. Shared circulation rules + Public Self-Service Kiosk (Achintha)
+builder.Services.AddScoped<ICirculationService, CirculationService>();
+builder.Services.Configure<KioskOptions>(builder.Configuration.GetSection(KioskOptions.SectionName));
+
+// Reservation summary shown on the kiosk account page.
+// Replace NoReservationSummaryProvider with the reservation module's implementation when it is ready.
+builder.Services.AddScoped<IReservationSummaryProvider, NoReservationSummaryProvider>();
+
+// Kiosk patron sessions are kept in server memory (separate from the staff login cookie).
+builder.Services.AddDistributedMemoryCache();
+builder.Services.AddSession(options =>
+{
+    var kiosk = builder.Configuration.GetSection(KioskOptions.SectionName).Get<KioskOptions>() ?? new KioskOptions();
+    options.Cookie.Name = ".Bibliotheca.Kiosk";
+    options.Cookie.HttpOnly = true;
+    options.Cookie.IsEssential = true;
+    options.Cookie.SameSite = SameSiteMode.Strict;
+    options.IdleTimeout = TimeSpan.FromSeconds(Math.Max(60, kiosk.IdleTimeoutSeconds + kiosk.IdleWarningSeconds + 30));
+});
+
 var app = builder.Build();
 
-// 5. Auto-Initialize & Seed Database on Startup
+// 6. Auto-Initialize & Seed Database on Startup
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
@@ -55,7 +76,7 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-// 6. HTTP Request Pipeline
+// 7. HTTP Request Pipeline
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
@@ -66,6 +87,8 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 
 app.UseRouting();
+
+app.UseSession(); // Required by the Self-Service Kiosk
 
 app.UseAuthentication();
 app.UseAuthorization();

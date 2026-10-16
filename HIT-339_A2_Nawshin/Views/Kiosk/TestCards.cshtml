@@ -1,0 +1,57 @@
+@model KioskTestCardsViewModel
+@{
+    ViewData["Title"] = "Kiosk Test Cards";
+    Layout = "_Layout"; // Staff page: uses the normal staff layout, not the kiosk layout
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4 d-print-none">
+    <div>
+        <h1 class="h3 fw-bold mb-1"><i class="bi bi-qr-code me-2 text-primary"></i>Kiosk Test Cards</h1>
+        <p class="text-muted mb-0">QR codes for borrower cards and available items. Print this page or show it on a phone to test the kiosk's "Scan with camera" option.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a asp-controller="Kiosk" asp-action="Index" target="_blank" class="btn btn-outline-primary"><i class="bi bi-display me-1"></i>Open kiosk</a>
+        <button type="button" class="btn btn-primary" onclick="window.print()"><i class="bi bi-printer me-1"></i>Print</button>
+    </div>
+</div>
+
+<h2 class="h5 fw-bold mb-3">Borrower library cards</h2>
+<div class="row g-3 mb-5">
+    @foreach (var b in Model.Borrowers)
+    {
+        <div class="col-6 col-md-4 col-lg-3">
+            <div class="card-custom p-3 text-center h-100">
+                <div class="qr mx-auto mb-2" data-qr="@b.CardNumber"></div>
+                <div class="fw-bold">@b.CardNumber</div>
+                <div class="small text-muted">@b.FullName @(b.IsActive ? "" : "(inactive)")</div>
+            </div>
+        </div>
+    }
+</div>
+
+<h2 class="h5 fw-bold mb-3">Available item labels</h2>
+<div class="row g-3">
+    @foreach (var i in Model.AvailableItems)
+    {
+        <div class="col-6 col-md-4 col-lg-3">
+            <div class="card-custom p-3 text-center h-100">
+                <div class="qr mx-auto mb-2" data-qr="@i.LibraryCode"></div>
+                <div class="fw-bold">@i.LibraryCode</div>
+                <div class="small text-muted text-truncate" title="@i.Name">@i.Name</div>
+            </div>
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script>
+        document.querySelectorAll('[data-qr]').forEach(function (el) {
+            if (window.QRCode) {
+                new QRCode(el, { text: el.dataset.qr, width: 128, height: 128, correctLevel: QRCode.CorrectLevel.M });
+            } else {
+                el.textContent = el.dataset.qr;
+            }
+        });
+    </script>
+}
