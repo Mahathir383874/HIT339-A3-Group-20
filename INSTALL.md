@@ -4,7 +4,7 @@ These instructions take a clean machine to a working Bibliotheca site for **any 
 Every location follows exactly the same steps. The only thing that changes is the **location branch** you choose in step 3.
 
 > Prepared by Achintha Fernando (S390909) — installation guide and kiosk module owner.
-> Tested on: *see the VM test record in section 9.*
+> Tested on the CDU IT Desktop (Windows 10 virtual desktop) on 16/10/2026 — see the VM test record in section 9 and the screenshots in [`docs/vm-test-evidence.md`](docs/vm-test-evidence.md).
 
 ---
 
@@ -46,7 +46,7 @@ The `setup` folder contains a script that does every step in section 4 for you a
 
 ```powershell
 # 1. Download the code (first time only)
-git clone <REPO_URL> "$HOME\Bibliotheca"
+git clone https://github.com/Mahathir383874/HIT339-A3-Group-20.git "$HOME\Bibliotheca"
 cd "$HOME\Bibliotheca"
 
 # 2. Install and run your location (replace the branch / name for your library)
@@ -56,7 +56,7 @@ cd "$HOME\Bibliotheca"
 ### Linux / macOS
 
 ```bash
-git clone <REPO_URL> ~/Bibliotheca
+git clone https://github.com/Mahathir383874/HIT339-A3-Group-20.git ~/Bibliotheca
 cd ~/Bibliotheca
 bash setup/setup.sh --branch main --location "Darwin City Library"
 ```
@@ -84,9 +84,12 @@ Use this if you prefer to type each command yourself. All commands are the same 
 ### Step 1 — Download the project
 
 ```bash
-git clone <REPO_URL> Bibliotheca
+git clone https://github.com/Mahathir383874/HIT339-A3-Group-20.git Bibliotheca
 cd Bibliotheca
 ```
+
+> **If `git clone` hangs or times out** (this happens on the CDU IT Desktop, where the network blocks Git): open
+> `https://github.com/Mahathir383874/HIT339-A3-Group-20/archive/refs/heads/main.zip` in the browser, right-click the downloaded file → **Extract All…** to your user folder, then continue from **Step 5** inside the extracted `HIT339-A3-Group-20-main\HIT-339_A2_Nawshin` folder. The setup script needs Git, so use these manual steps instead.
 
 ### Step 2 — See the available branches
 
@@ -236,14 +239,26 @@ dotnet run --launch-profile http
 | Kiosk "Scan with camera" says the camera is unavailable | Use `http://localhost` or HTTPS, allow camera permission in the browser, or type / USB-scan the code instead. |
 | Kiosk says "Too many unsuccessful attempts" | Wait 60 seconds (setting `LockoutSeconds`). |
 | `Branch '<name>' does not exist` from the setup script | Run `git branch -r` and use one of the listed names. |
+| `git clone` stays on `Cloning into…` and then says `Operation timed out after 300000 milliseconds` | The network is blocking Git (seen on the CDU IT Desktop). Download the ZIP from GitHub instead and follow section 4 from Step 5 (see the note under Step 1). |
+| Setup script stops with `You have uncommitted changes` when run a second time | The database and build files are currently committed to the repository, and running the site changes them. Run `git checkout -- .` and try again, or use the manual steps in section 4. |
+| Kiosk says "We couldn't find that library card" for a real card | Check the card was typed with a **dash**, e.g. `CRD-1002`, not `CRD 1002`. The on-screen **CRD-** key types the prefix and dash for you. |
+| Yellow `NU1901`/`NU1902`/`NU1903` warnings during restore/build | Security advisories for packages inherited from the original project. They do not stop the build or the site; listed for the team's final package update. |
 
 ---
 
 ## 9. VM test record (evidence)
 
 Fill in one row each time the instructions are tested on the virtual machine and save a screenshot of each result.
+Screenshots are in [`docs/evidence/vm-test/`](docs/evidence/vm-test/) and explained step by step in [`docs/vm-test-evidence.md`](docs/vm-test-evidence.md).
 
 | Date | Tester | VM OS / .NET SDK | Branch | Steps followed | Result | Evidence |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| | | | | Section 3 (script) | | |
-| | | | | Section 4 (manual) | | |
+| 16/10/2026 | Achintha Fernando (S390909) | CDU IT Desktop, Windows 10 / .NET SDK 10.0.302 (pre-installed), Git 2.31.1 | main | Section 3 (script): `git clone` of the repository | **Fail – blocked by network.** `git clone` timed out after 300 s with 0 bytes received, so the setup script could not be run. Guide updated: ZIP download alternative (section 4, Step 1) and new troubleshooting row. | vm-01 – vm-04 |
+| 16/10/2026 | Achintha Fernando (S390909) | CDU IT Desktop, Windows 10 / .NET SDK 10.0.302 | main (ZIP download) | Section 4 (manual): ZIP download → delete old database → `dotnet restore` → `dotnet build` → `dotnet run --launch-profile http -- --Kiosk:BranchName="Darwin City Library"` | **Pass.** Restore succeeded (18.8 s) and build succeeded (19.3 s) with 4 package-advisory warnings; database created and seeded automatically; site listening on `http://localhost:5226`. Checks in section 7: catalogue shows 13 items (8 available) ✔; kiosk opens with "Darwin City Library" in the header ✔; `CRD-1002` opens Emma's account ✔; borrowed Catan Board Game, receipt due 30 Oct 2026 and "2 items on loan" ✔; after End session the kiosk shows no patron signed in and Catan shows "On loan" ✔; Reception → Active Loans lists the kiosk loan (TOY-3002, Emma Watson, due 30 Oct 2026) ✔. | vm-05 – vm-14 |
+
+**Findings from the VM test**
+
+1. Git is blocked on the CDU IT Desktop, so the one-step setup script cannot clone the repository there. The ZIP + manual route worked first time. *Action:* ZIP instructions and a troubleshooting row added to this guide.
+2. Typing `CRD 1002` (space instead of dash) was correctly rejected with a clear message. A patron could easily make the same mistake. *Action:* troubleshooting row added; accepting spaces in card and item codes is suggested as a kiosk improvement.
+3. The database (`bibliotheca.db*`) and build folders (`.vs`, `bin`, `obj`) are committed to the repository, which blocks re-running the setup script and causes conflicts between members. *Action:* reported to Taief for the final cleanup.
+4. Not yet captured on the VM: the browser **Back** button check after End session (section 7, check 6). To be repeated and screenshotted.
