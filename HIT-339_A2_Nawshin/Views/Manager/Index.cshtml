@@ -10,6 +10,9 @@
         <p class="text-muted small mb-0">Comprehensive reports on inventory status, circulation patterns, and fine revenues.</p>
     </div>
     <div class="d-flex gap-2">
+        <a class="btn btn-primary-custom" asp-controller="Reports" asp-action="Index">
+            <i class="bi bi-file-earmark-bar-graph me-1"></i> Reports &amp; CSV/PDF Export
+        </a>
         <button class="btn btn-outline-custom" onclick="window.print()">
             <i class="bi bi-printer me-1"></i> Print / Export Report
         </button>
