@@ -1,9 +1,13 @@
 # Moon – API Endpoint Notes
 
+**Name:** Mishkatuz Zannat Moon · **Student ID:** 385411 · **Unit:** HIT339 Group Project
+
 The public API is **read-only** and needs **no login**. Base path: `/api/v1`. All responses are JSON.
 Run the app (`dotnet run`) and replace `https://localhost:PORT` with the address shown in the console.
 
 Documentation page: `/api-docs.html` (loads the generated OpenAPI document from `/openapi/v1.json`).
+
+I tested every endpoint and every error case in a browser (tests TC-API-01 to TC-API-14 in `04_Test_Plan_and_Evidence_Log.md`), and they all passed.
 
 ## Endpoints
 
@@ -127,10 +131,11 @@ curl.exe -k -i -X DELETE https://localhost:PORT/api/v1/items/1
 - Only GET actions exist. A CORS policy (`PublicReadOnlyApi`) allows other websites to call the API with GET/HEAD only.
 - The API returns purpose-built DTOs, never database entities, so replacement cost, loans, borrowers and fines can never leak.
 - Inputs are validated (page limits, page size cap of 100, search length cap, library code pattern), and queries use Entity Framework, so there is no SQL built from user text.
-- There is no API key. The data is already public through the catalogue search portal. If the team decides a key is needed, it would be added as a small filter on `CatalogApiController`.
+- There is no API key. The data is already public through the catalogue search portal. A key could be added as a small filter on `CatalogApiController`, but I didn't add one.
 
 ## Design notes
 
 - "Operating status" is implemented as the operating status of the service (reachable and working) plus stock counts by item status. Each item also carries its own `status`.
 - Paging is done in the database (`Skip`/`Take`), so the API stays fast as the catalogue grows.
 - Items are ordered by name, then id, so pages are stable.
+
