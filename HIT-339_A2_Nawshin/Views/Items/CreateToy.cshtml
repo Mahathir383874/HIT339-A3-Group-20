@@ -1,0 +1,133 @@
+@model Bibliotheca.Models.Entities.Toy
+@{
+    ViewData["Title"] = "Add New Toy / Game";
+}
+
+<div class="row justify-content-center py-3">
+    <div class="col-12 col-lg-8">
+        <div class="card-custom p-4 p-md-5 shadow-sm">
+            <div class="d-flex align-items-center justify-content-between border-bottom pb-3 mb-4">
+                <div>
+                    <span class="badge bg-warning-subtle text-warning fw-bold text-uppercase px-2 py-1 mb-1 text-dark">
+                        <i class="bi bi-puzzle me-1"></i> New Toy / Game Record
+                    </span>
+                    <h3 class="fw-bold mb-0">Add Toy / Game to Catalog</h3>
+                </div>
+                <a asp-action="Index" asp-route-category="Toy" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i> Back to Items
+                </a>
+            </div>
+
+            <form asp-action="CreateToy" method="post" enctype="multipart/form-data">
+                @Html.AntiForgeryToken()
+                <div asp-validation-summary="ModelOnly" class="alert alert-danger py-2 small mb-3"></div>
+
+                <div class="row g-3">
+                    <!-- Title -->
+                    <div class="col-12">
+                        <label asp-for="Name" class="form-label fw-semibold small">Toy / Game Name</label>
+                        <input asp-for="Name" class="form-control" placeholder="e.g. Lego Architecture Studio, Settlers of Catan" required />
+                        <span asp-validation-for="Name" class="text-danger small"></span>
+                    </div>
+
+                    <!-- Library Code -->
+                    <div class="col-12 col-md-6">
+                        <label asp-for="LibraryCode" class="form-label fw-semibold small"></label>
+                        <input asp-for="LibraryCode" class="form-control font-monospace" placeholder="e.g. TOY-3005" required />
+                        <div class="form-text small">Regex format: <code>^[A-Z]{3}-\d{4}$</code>.</div>
+                        <span asp-validation-for="LibraryCode" class="text-danger small"></span>
+                    </div>
+
+                    <!-- Status -->
+                    <div class="col-12 col-md-6">
+                        <label asp-for="Status" class="form-label fw-semibold small"></label>
+                        <select asp-for="Status" class="form-select" asp-items="Html.GetEnumSelectList<ItemStatus>()"></select>
+                        <span asp-validation-for="Status" class="text-danger small"></span>
+                    </div>
+
+                    <!-- Toy Type / Category -->
+                    <div class="col-12 col-md-6">
+                        <label asp-for="ToyType" class="form-label fw-semibold small"></label>
+                        <input asp-for="ToyType" class="form-control" placeholder="e.g. Board Game, STEM & Robotics, Educational, Puzzle" required />
+                        <span asp-validation-for="ToyType" class="text-danger small"></span>
+                    </div>
+
+                    <!-- Recommended Age -->
+                    <div class="col-12 col-md-6">
+                        <label asp-for="RecommendedAge" class="form-label fw-semibold small"></label>
+                        <input asp-for="RecommendedAge" class="form-control" placeholder="e.g. 3-5 years, 8-12 years, 10+ years" required />
+                        <span asp-validation-for="RecommendedAge" class="text-danger small"></span>
+                    </div>
+
+                    <!-- Manufacturer -->
+                    <div class="col-12 col-md-6">
+                        <label asp-for="Manufacturer" class="form-label fw-semibold small"></label>
+                        <input asp-for="Manufacturer" class="form-control" placeholder="e.g. LEGO, Ravensburger, Hasbro" />
+                        <span asp-validation-for="Manufacturer" class="text-danger small"></span>
+                    </div>
+
+                    <!-- Replacement Cost -->
+                    <div class="col-12 col-md-6">
+                        <label asp-for="ReplacementCost" class="form-label fw-semibold small"></label>
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            <input asp-for="ReplacementCost" type="number" step="0.01" class="form-control" />
+                        </div>
+                        <span asp-validation-for="ReplacementCost" class="text-danger small"></span>
+                    </div>
+
+                    <!-- Safety Warning -->
+                    <div class="col-12">
+                        <label asp-for="SafetyWarning" class="form-label fw-semibold small"></label>
+                        <input asp-for="SafetyWarning" class="form-control" placeholder="e.g. Choking hazard - contains small parts. Not for under 3 years." />
+                        <span asp-validation-for="SafetyWarning" class="text-danger small"></span>
+                    </div>
+
+                    <!-- Image Section: Device Upload or Web URL -->
+                    <div class="col-12">
+                        <div class="p-3 bg-light rounded-3 border">
+                            <label class="form-label fw-bold text-dark small d-block mb-2">
+                                <i class="bi bi-image me-1 text-warning"></i> Toy Photo / Graphic
+                            </label>
+                            
+                            <div class="row g-3">
+                                <!-- Upload from Device -->
+                                <div class="col-12 col-md-6">
+                                    <label class="form-label fw-semibold small text-muted">Option A: Upload Image from Device</label>
+                                    <input type="file" name="imageFile" class="form-control" accept="image/*" />
+                                    <div class="form-text small">Select JPEG, PNG, or WebP image from your computer.</div>
+                                </div>
+
+                                <!-- Or Provide Web URL -->
+                                <div class="col-12 col-md-6">
+                                    <label asp-for="ImageUrl" class="form-label fw-semibold small text-muted">Option B: Or Enter Image Web URL</label>
+                                    <input asp-for="ImageUrl" class="form-control" placeholder="https://example.com/toy.jpg" />
+                                    <div class="form-text small">Provide a direct web link if not uploading from device.</div>
+                                    <span asp-validation-for="ImageUrl" class="text-danger small"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Description -->
+                    <div class="col-12">
+                        <label asp-for="Description" class="form-label fw-semibold small"></label>
+                        <textarea asp-for="Description" class="form-control" rows="3" placeholder="Contents, rules, pieces or learning outcomes..."></textarea>
+                        <span asp-validation-for="Description" class="text-danger small"></span>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+                    <a asp-action="Index" asp-route-category="Toy" class="btn btn-outline-secondary">Cancel</a>
+                    <button type="submit" class="btn btn-primary-custom px-4">
+                        <i class="bi bi-check-lg me-1"></i> Save Toy / Game
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

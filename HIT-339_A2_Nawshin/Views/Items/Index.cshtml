@@ -1,0 +1,162 @@
+@model IEnumerable<Bibliotheca.Models.Entities.Item>
+@{
+    ViewData["Title"] = "Item Management (Admin)";
+    var activeCategory = (string)ViewBag.ActiveCategory ?? "All";
+}
+
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    <div>
+        <span class="badge role-admin mb-1"><i class="bi bi-shield-lock-fill me-1"></i> Admin Module</span>
+        <h2 class="fw-bold mb-0">Library Items Catalog</h2>
+        <p class="text-muted small mb-0">Manage Books, Music, and Toys with full CRUD permissions.</p>
+    </div>
+    <div class="dropdown">
+        <button class="btn btn-primary-custom dropdown-toggle" type="button" data-bs-toggle="dropdown">
+            <i class="bi bi-plus-lg me-1"></i> Add New Item
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0">
+            <li><a class="dropdown-item py-2" asp-action="CreateBook"><i class="bi bi-journal-plus me-2 text-primary"></i>Add Book</a></li>
+            <li><a class="dropdown-item py-2" asp-action="CreateMusic"><i class="bi bi-disc me-2 text-info"></i>Add Music Album</a></li>
+            <li><a class="dropdown-item py-2" asp-action="CreateToy"><i class="bi bi-puzzle me-2 text-warning"></i>Add Toy / Game</a></li>
+        </ul>
+    </div>
+</div>
+
+<!-- Filter Tabs & Search Bar -->
+<div class="card-custom p-3 mb-4">
+    <div class="row g-3 align-items-center justify-content-between">
+        <!-- Category Nav Pills -->
+        <div class="col-12 col-md-auto">
+            <ul class="nav nav-pills">
+                <li class="nav-item">
+                    <a class="nav-link @(activeCategory == "All" ? "active" : "")" asp-action="Index" asp-route-category="All">
+                        All Items <span class="badge bg-secondary ms-1">@Model.Count()</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link @(activeCategory == "Book" ? "active" : "")" asp-action="Index" asp-route-category="Book">
+                        📚 Books
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link @(activeCategory == "Music" ? "active" : "")" asp-action="Index" asp-route-category="Music">
+                        🎵 Music
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link @(activeCategory == "Toy" ? "active" : "")" asp-action="Index" asp-route-category="Toy">
+                        🧩 Toys
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Search input -->
+        <div class="col-12 col-md-5">
+            <form asp-action="Index" method="get" class="d-flex gap-2">
+                <input type="hidden" name="category" value="@activeCategory" />
+                <div class="input-group">
+                    <input type="text" name="searchTerm" class="form-control form-control-sm" placeholder="Filter by title, accession code..." value="@ViewBag.SearchTerm" />
+                    <button class="btn btn-sm btn-outline-secondary" type="submit"><i class="bi bi-search"></i></button>
+                </div>
+                @if (!string.IsNullOrEmpty(ViewBag.SearchTerm))
+                {
+                    <a asp-action="Index" asp-route-category="@activeCategory" class="btn btn-sm btn-outline-danger" title="Clear">
+                        <i class="bi bi-x"></i>
+                    </a>
+                }
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Items Table -->
+<div class="card-custom overflow-hidden shadow-sm">
+    <div class="table-responsive">
+        <table class="table table-custom align-middle">
+            <thead>
+                <tr>
+                    <th>Code</th>
+                    <th>Type</th>
+                    <th>Title & Key Information</th>
+                    <th>Status</th>
+                    <th>Replacement Cost</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Model.Any())
+                {
+                    <tr>
+                        <td colspan="6" class="text-center py-5 text-muted">
+                            <i class="bi bi-inbox fs-2 d-block mb-2"></i>
+                            No items found in this view.
+                        </td>
+                    </tr>
+                }
+                @foreach (var item in Model)
+                {
+                    var statusBadgeClass = item.Status switch
+                    {
+                        ItemStatus.Available => "badge-available",
+                        ItemStatus.Borrowed => "badge-borrowed",
+                        ItemStatus.Damaged => "badge-damaged",
+                        ItemStatus.Destroyed => "badge-destroyed",
+                        _ => "badge-secondary"
+                    };
+
+                    <tr>
+                        <td>
+                            <span class="badge-code">@item.LibraryCode</span>
+                        </td>
+                        <td>
+                            <span class="badge badge-type">
+                                @if (item is Book) { <i class="bi bi-book text-primary me-1"></i><span>Book</span> }
+                                else if (item is Music) { <i class="bi bi-disc text-info me-1"></i><span>Music</span> }
+                                else if (item is Toy) { <i class="bi bi-puzzle text-warning me-1"></i><span>Toy</span> }
+                            </span>
+                        </td>
+                        <td>
+                            <div class="fw-bold text-dark">@item.Name</div>
+                            <div class="small text-muted">
+                                @if (item is Book b)
+                                {
+                                    <span>Author: <strong>@b.Author</strong> &bull; Genre: @b.Genre</span>
+                                }
+                                else if (item is Music m)
+                                {
+                                    <span>Artist: <strong>@m.Artist</strong> &bull; Year: @m.ReleaseYear</span>
+                                }
+                                else if (item is Toy t)
+                                {
+                                    <span>Type: <strong>@t.ToyType</strong> &bull; Age: @t.RecommendedAge</span>
+                                }
+                            </div>
+                        </td>
+                        <td>
+                            <span class="badge-status @statusBadgeClass">
+                                @item.Status
+                            </span>
+                        </td>
+                        <td>
+                            <span class="fw-semibold text-dark">$@item.ReplacementCost.ToString("F2")</span>
+                        </td>
+                        <td class="text-end">
+                            <div class="btn-group btn-group-sm">
+                                <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-outline-secondary" title="View Details">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-outline-primary" title="Edit Item">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-outline-danger" title="Delete Item">
+                                    <i class="bi bi-trash"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

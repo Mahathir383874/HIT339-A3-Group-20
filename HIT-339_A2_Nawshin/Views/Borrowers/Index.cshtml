@@ -1,0 +1,139 @@
+@model IEnumerable<Bibliotheca.Models.Entities.Borrower>
+@{
+    ViewData["Title"] = "Borrower Management (Reception)";
+}
+
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    <div>
+        <span class="badge role-reception mb-1"><i class="bi bi-people-fill me-1"></i> Reception Desk</span>
+        <h2 class="fw-bold mb-0">Library Borrowers & Patrons</h2>
+        <p class="text-muted small mb-0">Manage patron cards, contact details, active borrowings, and overdue penalties.</p>
+    </div>
+    <div>
+        <a asp-action="Create" class="btn btn-primary-custom">
+            <i class="bi bi-person-plus me-1"></i> Register New Borrower
+        </a>
+    </div>
+</div>
+
+<!-- Search Bar -->
+<div class="card-custom p-3 mb-4">
+    <form asp-action="Index" method="get" class="row g-2 align-items-center">
+        <div class="col-12 col-md-8">
+            <div class="input-group">
+                <span class="input-group-text bg-light"><i class="bi bi-search text-muted"></i></span>
+                <input type="text" name="searchTerm" class="form-control" placeholder="Search by borrower name, card number, email, or phone..." value="@ViewBag.SearchTerm" />
+            </div>
+        </div>
+        <div class="col-6 col-md-2">
+            <div class="form-check pt-1">
+                <input class="form-check-input" type="checkbox" name="activeOnly" id="activeOnly" value="true" checked="@(ViewBag.ActiveOnly == true)" />
+                <label class="form-check-label small fw-semibold" for="activeOnly">
+                    Active Only
+                </label>
+            </div>
+        </div>
+        <div class="col-6 col-md-2 d-flex gap-2">
+            <button type="submit" class="btn btn-primary-custom flex-grow-1">Filter</button>
+            @if (!string.IsNullOrEmpty(ViewBag.SearchTerm) || ViewBag.ActiveOnly == true)
+            {
+                <a asp-action="Index" class="btn btn-outline-secondary"><i class="bi bi-x-lg"></i></a>
+            }
+        </div>
+    </form>
+</div>
+
+<!-- Borrowers Table -->
+<div class="card-custom overflow-hidden shadow-sm">
+    <div class="table-responsive">
+        <table class="table table-custom align-middle">
+            <thead>
+                <tr>
+                    <th>Card Number</th>
+                    <th>Borrower Name</th>
+                    <th>Contact Info</th>
+                    <th>Active Loans</th>
+                    <th>Unpaid Fines</th>
+                    <th>Status</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Model.Any())
+                {
+                    <tr>
+                        <td colspan="7" class="text-center py-5 text-muted">
+                            <i class="bi bi-person-x fs-2 d-block mb-2"></i>
+                            No borrower records found.
+                        </td>
+                    </tr>
+                }
+                @foreach (var b in Model)
+                {
+                    var activeLoans = b.Loans.Count(l => l.Status == LoanStatus.Active || l.Status == LoanStatus.Overdue);
+                    var unpaidFines = b.Fines.Where(f => !f.IsPaid).Sum(f => f.Amount);
+
+                    <tr>
+                        <td>
+                            <span class="badge-code">@b.CardNumber</span>
+                        </td>
+                        <td>
+                            <div class="fw-bold text-dark">@b.FullName</div>
+                            <div class="small text-muted">Member since @b.RegisteredDate.ToString("MMM yyyy")</div>
+                        </td>
+                        <td>
+                            <div class="small"><i class="bi bi-envelope me-1 text-muted"></i>@b.Email</div>
+                            <div class="small"><i class="bi bi-telephone me-1 text-muted"></i>@b.Phone</div>
+                        </td>
+                        <td>
+                            @if (activeLoans > 0)
+                            {
+                                <span class="badge bg-primary rounded-pill">@activeLoans Active</span>
+                            }
+                            else
+                            {
+                                <span class="text-muted small">0</span>
+                            }
+                        </td>
+                        <td>
+                            @if (unpaidFines > 0)
+                            {
+                                <span class="badge bg-danger rounded-pill">$@unpaidFines.ToString("F2")</span>
+                            }
+                            else
+                            {
+                                <span class="text-success small fw-semibold"><i class="bi bi-check me-1"></i>$0.00</span>
+                            }
+                        </td>
+                        <td>
+                            @if (b.IsActive)
+                            {
+                                <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">Active</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1">Suspended</span>
+                            }
+                        </td>
+                        <td class="text-end">
+                            <div class="btn-group btn-group-sm">
+                                <a asp-controller="Loans" asp-action="Issue" asp-route-cardNumber="@b.CardNumber" class="btn btn-outline-success" title="Issue Item to this Borrower">
+                                    <i class="bi bi-box-arrow-right"></i>
+                                </a>
+                                <a asp-action="Details" asp-route-id="@b.Id" class="btn btn-outline-secondary" title="View Profile">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <a asp-action="Edit" asp-route-id="@b.Id" class="btn btn-outline-primary" title="Edit Contact Info">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <a asp-action="Delete" asp-route-id="@b.Id" class="btn btn-outline-danger" title="Delete / Deactivate">
+                                    <i class="bi bi-trash"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

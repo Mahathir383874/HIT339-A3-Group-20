@@ -1,0 +1,354 @@
+@model Bibliotheca.Models.ViewModels.ManagerDashboardViewModel
+@{
+    ViewData["Title"] = "Manager Analytics & Statistics Dashboard";
+}
+
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    <div>
+        <span class="badge role-manager mb-1"><i class="bi bi-graph-up-arrow me-1"></i> Executive Analytics</span>
+        <h2 class="fw-bold mb-0">Library Statistics & Management Overview</h2>
+        <p class="text-muted small mb-0">Comprehensive reports on inventory status, circulation patterns, and fine revenues.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <button class="btn btn-outline-custom" onclick="window.print()">
+            <i class="bi bi-printer me-1"></i> Print / Export Report
+        </button>
+    </div>
+</div>
+
+<!-- Key Performance Indicators (KPI Cards) -->
+<div class="row g-3 mb-4">
+    <!-- Total Catalog Items -->
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="stat-card">
+            <div class="stat-icon bg-primary bg-opacity-10 text-primary">
+                <i class="bi bi-collection-fill"></i>
+            </div>
+            <div>
+                <div class="stat-value text-dark">@Model.TotalItems</div>
+                <div class="stat-label">Total Catalog Items</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Active Circulations -->
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="stat-card">
+            <div class="stat-icon bg-info bg-opacity-10 text-info">
+                <i class="bi bi-arrow-repeat"></i>
+            </div>
+            <div>
+                <div class="stat-value text-dark">@Model.ActiveLoansCount</div>
+                <div class="stat-label">Currently Borrowed</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Borrows This Week -->
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="stat-card">
+            <div class="stat-icon bg-success bg-opacity-10 text-success">
+                <i class="bi bi-calendar-check-fill"></i>
+            </div>
+            <div>
+                <div class="stat-value text-dark">@Model.BorrowsThisWeek</div>
+                <div class="stat-label">Borrows This Week</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Fines Revenue -->
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="stat-card">
+            <div class="stat-icon bg-warning bg-opacity-10 text-warning">
+                <i class="bi bi-cash-stack"></i>
+            </div>
+            <div>
+                <div class="stat-value text-dark">$@Model.TotalFinesCollected.ToString("F2")</div>
+                <div class="stat-label">Fines Revenue Collected</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Analytics Charts & Inventory Breakdown -->
+<div class="row g-4 mb-4">
+    <!-- Chart 1: Item Status Distribution -->
+    <div class="col-12 col-lg-6">
+        <div class="card-custom p-4 h-100">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold mb-0"><i class="bi bi-pie-chart me-2 text-primary"></i>Item Status Distribution</h5>
+                <span class="badge bg-light text-secondary border">Total: @Model.TotalItems items</span>
+            </div>
+            <div style="height: 280px;" class="position-relative d-flex align-items-center justify-content-center">
+                <canvas id="itemStatusChart"></canvas>
+            </div>
+            <div class="row text-center mt-3 pt-3 border-top g-2">
+                <div class="col-3">
+                    <div class="fw-bold text-success">@Model.AvailableItemsCount</div>
+                    <div class="small text-muted">Available</div>
+                </div>
+                <div class="col-3">
+                    <div class="fw-bold text-primary">@Model.BorrowedItemsCount</div>
+                    <div class="small text-muted">Borrowed</div>
+                </div>
+                <div class="col-3">
+                    <div class="fw-bold text-warning">@Model.DamagedItemsCount</div>
+                    <div class="small text-muted">Damaged</div>
+                </div>
+                <div class="col-3">
+                    <div class="fw-bold text-danger">@Model.DestroyedItemsCount</div>
+                    <div class="small text-muted">Destroyed</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chart 2: Borrowing by Category -->
+    <div class="col-12 col-lg-6">
+        <div class="card-custom p-4 h-100">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold mb-0"><i class="bi bi-bar-chart-line me-2 text-info"></i>Circulation by Category</h5>
+                <span class="badge bg-light text-secondary border">All-Time Borrows</span>
+            </div>
+            <div style="height: 280px;" class="position-relative d-flex align-items-center justify-content-center">
+                <canvas id="categoryBorrowChart"></canvas>
+            </div>
+            <div class="row text-center mt-3 pt-3 border-top g-2">
+                <div class="col-4">
+                    <div class="fw-bold text-dark">@Model.TotalBooksCount Books</div>
+                    <div class="small text-muted">In Catalog</div>
+                </div>
+                <div class="col-4">
+                    <div class="fw-bold text-dark">@Model.TotalMusicCount Music</div>
+                    <div class="small text-muted">In Catalog</div>
+                </div>
+                <div class="col-4">
+                    <div class="fw-bold text-dark">@Model.TotalToysCount Toys</div>
+                    <div class="small text-muted">In Catalog</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Deep Dive Tables: Top Borrowed Items & Financial Recovery -->
+<div class="row g-4 mb-4">
+    <!-- Top Most Borrowed Items -->
+    <div class="col-12 col-lg-6">
+        <div class="card-custom p-4 h-100">
+            <h5 class="fw-bold border-bottom pb-2 mb-3">
+                <i class="bi bi-trophy-fill text-warning me-2"></i>Most Frequently Borrowed Items
+            </h5>
+
+            @if (!Model.MostBorrowedItems.Any())
+            {
+                <p class="text-muted text-center py-4">No borrowing transactions on record yet.</p>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-custom align-middle">
+                        <thead>
+                            <tr>
+                                <th>Item Title</th>
+                                <th>Type</th>
+                                <th class="text-end">Times Borrowed</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in Model.MostBorrowedItems)
+                            {
+                                <tr>
+                                    <td>
+                                        <div class="fw-bold text-dark">@item.Title</div>
+                                        <span class="badge-code">@item.LibraryCode</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge badge-type">@item.ItemType</span>
+                                    </td>
+                                    <td class="text-end">
+                                        <span class="badge bg-primary fs-6 px-3 py-1">@item.BorrowCount</span>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Financial Analysis: Fines vs Damage Costs -->
+    <div class="col-12 col-lg-6">
+        <div class="card-custom p-4 h-100">
+            <h5 class="fw-bold border-bottom pb-2 mb-3">
+                <i class="bi bi-cash-coin text-success me-2"></i>Financial Analysis & Damage Recovery
+            </h5>
+
+            <div class="p-3 bg-light rounded-3 mb-3">
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Total Fines Generated (Overdue):</span>
+                    <strong class="text-dark">$@Model.TotalFinesGenerated.ToString("F2")</strong>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Fines Collected (Paid):</span>
+                    <strong class="text-success">+$@Model.TotalFinesCollected.ToString("F2")</strong>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Outstanding Unpaid Fines:</span>
+                    <strong class="text-danger">$@Model.TotalFinesOutstanding.ToString("F2")</strong>
+                </div>
+                <div class="d-flex justify-content-between mb-2 border-top pt-2">
+                    <span class="text-muted">Estimated Replacement of Damaged/Destroyed Items:</span>
+                    <strong class="text-danger">-$@Model.TotalDamagedReplacementCost.ToString("F2")</strong>
+                </div>
+                <div class="d-flex justify-content-between border-top pt-2 fs-6">
+                    <span class="fw-bold">Net Fine Recovery Balance:</span>
+                    <strong class="@(Model.NetFineVsDamageBalance >= 0 ? "text-success" : "text-danger")">
+                        $@Model.NetFineVsDamageBalance.ToString("F2")
+                    </strong>
+                </div>
+            </div>
+
+            <!-- Circulation Volume Summary -->
+            <div class="row g-2 text-center small">
+                <div class="col-4 p-2 bg-white border rounded">
+                    <div class="fw-bold text-dark">@Model.BorrowsThisWeek</div>
+                    <div class="text-muted">Last 7 Days</div>
+                </div>
+                <div class="col-4 p-2 bg-white border rounded">
+                    <div class="fw-bold text-dark">@Model.BorrowsThisMonth</div>
+                    <div class="text-muted">Last 30 Days</div>
+                </div>
+                <div class="col-4 p-2 bg-white border rounded">
+                    <div class="fw-bold text-dark">@Model.BorrowsThisYear</div>
+                    <div class="text-muted">Last 365 Days</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Damaged or Destroyed Items Audit List -->
+<div class="card-custom p-4 mb-4">
+    <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
+        <h5 class="fw-bold mb-0">
+            <i class="bi bi-exclamation-triangle-fill text-warning me-2"></i>Damaged & Destroyed Items Audit List (@Model.DamagedOrDestroyedItems.Count)
+        </h5>
+        <span class="badge bg-danger">Total Replacement Liability: $@Model.TotalDamagedReplacementCost.ToString("F2")</span>
+    </div>
+
+    @if (!Model.DamagedOrDestroyedItems.Any())
+    {
+        <p class="text-success text-center py-3"><i class="bi bi-check-circle me-1"></i> Excellent! No items are currently marked as damaged or destroyed.</p>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-custom align-middle">
+                <thead>
+                    <tr>
+                        <th>Accession Code</th>
+                        <th>Item Title</th>
+                        <th>Category</th>
+                        <th>Current Status</th>
+                        <th>Est. Replacement Cost</th>
+                        <th class="text-end">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model.DamagedOrDestroyedItems)
+                    {
+                        <tr>
+                            <td><span class="badge-code">@item.LibraryCode</span></td>
+                            <td class="fw-bold text-dark">@item.Name</td>
+                            <td><span class="badge badge-type">@item.ItemType</span></td>
+                            <td>
+                                <span class="badge-status @(item.Status == ItemStatus.Damaged ? "badge-damaged" : "badge-destroyed")">
+                                    @item.Status
+                                </span>
+                            </td>
+                            <td class="fw-semibold text-danger">$@item.ReplacementCost.ToString("F2")</td>
+                            <td class="text-end">
+                                <a asp-controller="Items" asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-pencil me-1"></i> Update Status
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            // Chart 1: Item Status Distribution
+            const statusCtx = document.getElementById('itemStatusChart').getContext('2d');
+            new Chart(statusCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Available', 'Borrowed', 'Damaged', 'Destroyed'],
+                    datasets: [{
+                        data: [
+                            @Model.AvailableItemsCount,
+                            @Model.BorrowedItemsCount,
+                            @Model.DamagedItemsCount,
+                            @Model.DestroyedItemsCount
+                        ],
+                        backgroundColor: ['#10b981', '#6366f1', '#f59e0b', '#ef4444'],
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+
+            // Chart 2: Category Borrow Popularity
+            const categoryCtx = document.getElementById('categoryBorrowChart').getContext('2d');
+            const catLabels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.CategoryBorrowStats.Select(c => c.Category)));
+            const catData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.CategoryBorrowStats.Select(c => c.BorrowCount)));
+
+            new Chart(categoryCtx, {
+                type: 'bar',
+                data: {
+                    labels: catLabels.length > 0 ? catLabels : ['Books', 'Music', 'Toys'],
+                    datasets: [{
+                        label: 'Total Borrows',
+                        data: catData.length > 0 ? catData : [0, 0, 0],
+                        backgroundColor: ['#4338ca', '#0ea5e9', '#f59e0b'],
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                precision: 0
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+        });
+    </script>
+}

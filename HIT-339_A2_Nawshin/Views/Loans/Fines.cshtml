@@ -1,0 +1,166 @@
+@model IEnumerable<Bibliotheca.Models.Entities.Fine>
+@{
+    ViewData["Title"] = "Late Fines Desk (Reception)";
+    var statusFilter = (string)ViewBag.StatusFilter ?? "All";
+    var totalGenerated = Model.Sum(f => f.Amount);
+    var totalCollected = Model.Where(f => f.IsPaid).Sum(f => f.Amount);
+    var totalOutstanding = Model.Where(f => !f.IsPaid).Sum(f => f.Amount);
+}
+
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    <div>
+        <span class="badge role-reception mb-1"><i class="bi bi-cash-coin me-1"></i> Reception Desk</span>
+        <h2 class="fw-bold mb-0">Overdue Fines & Penalties</h2>
+        <p class="text-muted small mb-0">Monitor overdue loan penalties, settle payments, and track revenue collection.</p>
+    </div>
+    <div>
+        <a asp-action="Index" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i> Back to Loans Desk
+        </a>
+    </div>
+</div>
+
+<!-- Financial Summary Widgets -->
+<div class="row g-3 mb-4">
+    <div class="col-12 col-md-4">
+        <div class="stat-card">
+            <div class="stat-icon bg-danger bg-opacity-10 text-danger">
+                <i class="bi bi-exclamation-circle-fill"></i>
+            </div>
+            <div>
+                <div class="stat-value text-danger">$@totalOutstanding.ToString("F2")</div>
+                <div class="stat-label">Outstanding Unpaid Fines</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-md-4">
+        <div class="stat-card">
+            <div class="stat-icon bg-success bg-opacity-10 text-success">
+                <i class="bi bi-check-circle-fill"></i>
+            </div>
+            <div>
+                <div class="stat-value text-success">$@totalCollected.ToString("F2")</div>
+                <div class="stat-label">Total Fines Collected</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-md-4">
+        <div class="stat-card">
+            <div class="stat-icon bg-primary bg-opacity-10 text-primary">
+                <i class="bi bi-receipt"></i>
+            </div>
+            <div>
+                <div class="stat-value text-primary">$@totalGenerated.ToString("F2")</div>
+                <div class="stat-label">All-Time Incurred Fines</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filter Tabs -->
+<div class="card-custom p-3 mb-4">
+    <ul class="nav nav-pills">
+        <li class="nav-item">
+            <a class="nav-link @(statusFilter == "All" ? "active" : "")" asp-action="Fines" asp-route-statusFilter="All">
+                All Records
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link @(statusFilter == "Unpaid" ? "active bg-danger" : "text-danger")" asp-action="Fines" asp-route-statusFilter="Unpaid">
+                <i class="bi bi-clock-history me-1"></i> Unpaid Only
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link @(statusFilter == "Paid" ? "active bg-success" : "text-success")" asp-action="Fines" asp-route-statusFilter="Paid">
+                <i class="bi bi-check-circle me-1"></i> Paid Fines
+            </a>
+        </li>
+    </ul>
+</div>
+
+<!-- Fines Table -->
+<div class="card-custom overflow-hidden shadow-sm">
+    <div class="table-responsive">
+        <table class="table table-custom align-middle">
+            <thead>
+                <tr>
+                    <th>Date Incurred</th>
+                    <th>Borrower</th>
+                    <th>Library Item</th>
+                    <th>Days Late</th>
+                    <th>Amount</th>
+                    <th>Payment Status</th>
+                    <th class="text-end">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!Model.Any())
+                {
+                    <tr>
+                        <td colspan="7" class="text-center py-5 text-muted">
+                            <i class="bi bi-shield-check fs-2 d-block mb-2 text-success"></i>
+                            No fine records found matching the filter.
+                        </td>
+                    </tr>
+                }
+                @foreach (var fine in Model)
+                {
+                    <tr>
+                        <td>
+                            <span class="small text-muted">@fine.CreatedDate.ToString("d MMM yyyy")</span>
+                        </td>
+                        <td>
+                            <div class="fw-bold text-dark">@fine.Borrower?.FullName</div>
+                            <span class="badge bg-light text-secondary border font-monospace">@fine.Borrower?.CardNumber</span>
+                        </td>
+                        <td>
+                            <div class="fw-semibold text-dark">@fine.Loan?.Item?.Name</div>
+                            <span class="badge-code">@fine.Loan?.Item?.LibraryCode</span>
+                        </td>
+                        <td>
+                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle">
+                                @fine.DaysLate days
+                            </span>
+                        </td>
+                        <td>
+                            <span class="fw-bold fs-6 @(fine.IsPaid ? "text-success" : "text-danger")">
+                                $@fine.Amount.ToString("F2")
+                            </span>
+                        </td>
+                        <td>
+                            @if (fine.IsPaid)
+                            {
+                                <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">
+                                    <i class="bi bi-check-circle-fill me-1"></i> Paid (@(fine.PaidDate.HasValue ? fine.PaidDate.Value.ToString("d MMM") : "Desk"))
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-danger px-2 py-1">
+                                    <i class="bi bi-exclamation-circle me-1"></i> Unpaid
+                                </span>
+                            }
+                        </td>
+                        <td class="text-end">
+                            @if (!fine.IsPaid)
+                            {
+                                <form asp-action="PayFine" asp-route-id="@fine.Id" method="post" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-sm btn-success">
+                                        <i class="bi bi-cash me-1"></i> Collect Payment
+                                    </button>
+                                </form>
+                            }
+                            else
+                            {
+                                <span class="text-muted small"><i class="bi bi-check2-all text-success me-1"></i>Settled</span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

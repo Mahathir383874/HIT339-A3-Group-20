@@ -1,0 +1,224 @@
+@model Bibliotheca.Models.ViewModels.CatalogSearchViewModel
+@{
+    ViewData["Title"] = "Public Catalog Search";
+}
+
+<!-- Hero Search Section -->
+<div class="search-hero">
+    <div class="row align-items-center">
+        <div class="col-12 col-lg-8 mb-4 mb-lg-0">
+            <span class="badge bg-primary-subtle text-primary fw-bold text-uppercase px-3 py-2 rounded-pill mb-2">
+                <i class="bi bi-phone me-1"></i> Mobile Responsive Public Portal
+            </span>
+            <h1 class="display-5 fw-bold mb-2">Search Library Collection</h1>
+            <p class="text-light opacity-75 lead mb-0">
+                Explore books, musical albums, and educational toys. Check live availability before visiting.
+            </p>
+        </div>
+        <div class="col-12 col-lg-4 text-lg-end">
+            <div class="d-inline-flex gap-3 bg-white bg-opacity-10 backdrop-blur p-3 rounded-3 text-start">
+                <div>
+                    <div class="fs-4 fw-bold text-white">@Model.TotalResults</div>
+                    <div class="small text-light opacity-75">Items in Search</div>
+                </div>
+                <div class="border-start border-light border-opacity-25 ps-3">
+                    <div class="fs-4 fw-bold text-success">@Model.AvailableResults</div>
+                    <div class="small text-light opacity-75">Available Now</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Search & Filter Controls -->
+<div class="card-custom p-3 p-md-4 mb-4">
+    <form asp-controller="Catalog" asp-action="Index" method="get" class="row g-3 align-items-end">
+        <!-- Search Keyword -->
+        <div class="col-12 col-md-4">
+            <label class="form-label fw-bold small text-muted">Keyword / Title / Author / Code</label>
+            <div class="input-group">
+                <span class="input-group-text bg-light"><i class="bi bi-search text-muted"></i></span>
+                <input type="text" name="searchTerm" class="form-control" placeholder="Search by title, author, artist, code..." value="@Model.SearchTerm" />
+            </div>
+        </div>
+
+        <!-- Category -->
+        <div class="col-6 col-md-2">
+            <label class="form-label fw-bold small text-muted">Item Type</label>
+            <select name="category" class="form-select">
+                <option value="All" selected="@(Model.Category == "All")">All Types</option>
+                <option value="Book" selected="@(Model.Category == "Book")">📚 Books</option>
+                <option value="Music" selected="@(Model.Category == "Music")">🎵 Music</option>
+                <option value="Toy" selected="@(Model.Category == "Toy")">🧩 Toys</option>
+            </select>
+        </div>
+
+        <!-- Status Filter -->
+        <div class="col-6 col-md-2">
+            <label class="form-label fw-bold small text-muted">Status</label>
+            <select name="statusFilter" class="form-select">
+                <option value="All" selected="@(Model.StatusFilter == "All")">All Statuses</option>
+                <option value="Available" selected="@(Model.StatusFilter == "Available")">Available Only</option>
+                <option value="Borrowed" selected="@(Model.StatusFilter == "Borrowed")">Borrowed</option>
+                <option value="Damaged" selected="@(Model.StatusFilter == "Damaged")">Damaged</option>
+            </select>
+        </div>
+
+        <!-- Sort By -->
+        <div class="col-6 col-md-2">
+            <label class="form-label fw-bold small text-muted">Sort By</label>
+            <select name="sortBy" class="form-select">
+                <option value="name" selected="@(Model.SortBy == "name")">Title (A-Z)</option>
+                <option value="newest" selected="@(Model.SortBy == "newest")">Newly Added</option>
+                <option value="code" selected="@(Model.SortBy == "code")">Accession Code</option>
+                <option value="status" selected="@(Model.SortBy == "status")">Availability</option>
+            </select>
+        </div>
+
+        <!-- Submit & Reset -->
+        <div class="col-6 col-md-2 d-flex gap-2">
+            <button type="submit" class="btn btn-primary-custom flex-grow-1">
+                <i class="bi bi-funnel me-1"></i> Filter
+            </button>
+            <a asp-action="Index" class="btn btn-outline-secondary" title="Clear Filters">
+                <i class="bi bi-x-circle"></i>
+            </a>
+        </div>
+    </form>
+</div>
+
+<!-- Results Grid -->
+@if (!Model.Items.Any())
+{
+    <div class="card-custom p-5 text-center my-4">
+        <div class="text-muted mb-3"><i class="bi bi-search fs-1"></i></div>
+        <h4>No matching items found</h4>
+        <p class="text-muted">Try searching with broader terms or removing filter restrictions.</p>
+        <div>
+            <a asp-action="Index" class="btn btn-outline-custom">View Full Collection</a>
+        </div>
+    </div>
+}
+else
+{
+    <div class="row g-4 mb-5">
+        @foreach (var item in Model.Items)
+        {
+            var statusBadgeClass = item.Status switch
+            {
+                ItemStatus.Available => "badge-available",
+                ItemStatus.Borrowed => "badge-borrowed",
+                ItemStatus.Damaged => "badge-damaged",
+                ItemStatus.Destroyed => "badge-destroyed",
+                _ => "badge-secondary"
+            };
+
+            var statusIcon = item.Status switch
+            {
+                ItemStatus.Available => "bi-check-circle-fill",
+                ItemStatus.Borrowed => "bi-clock-fill",
+                ItemStatus.Damaged => "bi-exclamation-circle-fill",
+                ItemStatus.Destroyed => "bi-x-circle-fill",
+                _ => "bi-question-circle"
+            };
+
+            var defaultImg = item.ItemType switch
+            {
+                "Book" => "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=400&q=80",
+                "Music" => "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400&q=80",
+                "Toy" => "https://images.unsplash.com/photo-1585366119957-e9730b6d0f60?w=400&q=80",
+                _ => "https://images.unsplash.com/photo-1532012164546-f432f2e3edd4?w=400&q=80"
+            };
+
+            <div class="col-12 col-sm-6 col-lg-4 col-xl-3">
+                <div class="catalog-item-card">
+                    <!-- Image with type overlay -->
+                    <div class="position-relative">
+                        <img src="@(string.IsNullOrEmpty(item.ImageUrl) ? defaultImg : item.ImageUrl)"
+                             alt="@item.Name"
+                             class="catalog-item-img"
+                             loading="lazy"
+                             onerror="this.src='@defaultImg'" />
+                        <span class="position-absolute top-0 start-0 m-2 badge badge-type bg-white shadow-sm">
+                            @if (item is Book) { <i class="bi bi-book me-1 text-primary"></i><span>Book</span> }
+                            else if (item is Music) { <i class="bi bi-disc me-1 text-info"></i><span>Music</span> }
+                            else if (item is Toy) { <i class="bi bi-puzzle me-1 text-warning"></i><span>Toy</span> }
+                        </span>
+                        <span class="position-absolute bottom-0 end-0 m-2 badge-code shadow-sm">
+                            @item.LibraryCode
+                        </span>
+                    </div>
+
+                    <!-- Card Body -->
+                    <div class="catalog-item-body">
+                        <div class="mb-2">
+                            <span class="badge-status @statusBadgeClass">
+                                <i class="bi @statusIcon"></i> @item.Status
+                            </span>
+                        </div>
+
+                        <h5 class="fw-bold text-dark mb-1 text-truncate" title="@item.Name">
+                            <a asp-action="Details" asp-route-id="@item.Id" class="text-dark text-decoration-none">
+                                @item.Name
+                            </a>
+                        </h5>
+
+                        <!-- Extra Specific Details based on Subclass -->
+                        @if (item is Book book)
+                        {
+                            <div class="small text-muted mb-2">
+                                <i class="bi bi-person me-1"></i><strong>Author:</strong> @book.Author
+                            </div>
+                            <div class="small text-muted mb-2">
+                                <span class="badge bg-light text-secondary border">@book.Genre</span>
+                                @if (book.PageCount.HasValue)
+                                {
+                                    <span class="ms-1 text-muted">@book.PageCount pages</span>
+                                }
+                            </div>
+                        }
+                        else if (item is Music music)
+                        {
+                            <div class="small text-muted mb-2">
+                                <i class="bi bi-music-note me-1"></i><strong>Artist:</strong> @music.Artist
+                            </div>
+                            <div class="small text-muted mb-2">
+                                @if (music.ReleaseYear.HasValue)
+                                {
+                                    <span class="badge bg-light text-secondary border">Year: @music.ReleaseYear</span>
+                                }
+                                @if (music.DurationMinutes.HasValue)
+                                {
+                                    <span class="ms-1 text-muted">@music.DurationMinutes mins</span>
+                                }
+                            </div>
+                        }
+                        else if (item is Toy toy)
+                        {
+                            <div class="small text-muted mb-2">
+                                <i class="bi bi-tag me-1"></i><strong>Category:</strong> @toy.ToyType
+                            </div>
+                            <div class="small text-muted mb-2">
+                                <span class="badge bg-light text-secondary border">Age: @toy.RecommendedAge</span>
+                            </div>
+                        }
+
+                        @if (!string.IsNullOrEmpty(item.Description))
+                        {
+                            <p class="text-muted small flex-grow-1 text-truncate-2 mb-3" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                                @item.Description
+                            </p>
+                        }
+
+                        <!-- Action Footer -->
+                        <div class="pt-2 border-top mt-auto d-flex justify-content-between align-items-center">
+                            <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-custom w-100">
+                                <i class="bi bi-info-circle me-1"></i> View Details
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
