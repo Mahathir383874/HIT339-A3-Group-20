@@ -19,6 +19,8 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="10.0.2" />
+    <!-- [Moon] PDF export for manager reports (QuestPDF Community licence) -->
+    <PackageReference Include="QuestPDF" Version="2025.*" />
   </ItemGroup>
 
 </Project>
