@@ -38,9 +38,9 @@ Then open **http://localhost:5226** (catalogue) or **http://localhost:5226/Kiosk
 | Module | Where to find it | Owner | How to test it |
 | :--- | :--- | :--- | :--- |
 | **Public Self-Service Kiosk** | `/Kiosk` · navbar → *Self-Service Kiosk* | Achintha | See [Self-Service Kiosk](#self-service-kiosk) below and [`docs/kiosk-test-plan.md`](docs/kiosk-test-plan.md) |
-| Public read-only REST API | *(to be added)* | Moon | *(to be added)* |
-| CSV / external data importer | *(to be added)* | Moon | *(to be added)* |
-| Manager analytics & CSV/PDF export | *(to be added)* | Moon | *(to be added)* |
+| Public read-only REST API | `/api/v1/items` · docs page `/api-docs.html` | Moon | Open `http://localhost:5226/api/v1/items` (also `/items/{id}`, `/items/by-code/BOK-1001`, `/categories`, `/status`). GET only, no login. See `docs/moon/02_API_Endpoint_Notes.md` |
+| CSV / external data importer | `/Import` · Admin → *Item Management* → *Bulk Import (CSV)* | Moon | Upload a file from `docs/moon/sample-data/`, press *Validate & preview*, then *Import*. `mixed_import.csv` gives 3 valid, 5 invalid, 2 duplicate. See `docs/moon/03_Importer_and_Reporting_Notes.md` |
+| Manager analytics & CSV/PDF export | `/Reports` · Manager → *Reports & Export* | Moon | Pick a date range, press *Apply filter*, then *Export CSV* or *Export PDF* on any report. See `docs/moon/04_Test_Plan_and_Evidence_Log.md` |
 | Reservations & waitlist | *(to be added)* | Tanisha | *(to be added)* |
 | Notifications log | *(to be added)* | Tanisha | *(to be added)* |
 | Multi-branch inventory & transfers | *(to be added)* | Taief | *(to be added — include how to seed multi-branch data)* |
