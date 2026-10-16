@@ -1,6 +1,6 @@
 # Moon – Requirements, Acceptance Criteria and Traceability
 
-**Member:** Mishkatuz Zannat Moon  
+**Member:** Mishkatuz Zannat Moon (student ID 385411)  
 **Main responsibility:** Read-only REST API, External Data Importer, Manager Analytics and Export  
 **Branches:** `feature/moon-api`, `feature/moon-import`, `feature/moon-analytics`  
 **Source of requirements:** Group Project brief, Part B (*Public API & Developer Endpoint*, *External Book/Media Data Importer*, *Expanded Manager Analytics & Export*) and the Work Distribution Guide, section 3.
@@ -51,7 +51,7 @@ Priority: **M** = must have (stated in the brief or guide), **S** = should have 
 | REQ-EXP-01 | Every report can be exported as a CSV file. | M | Brief B3; Guide §3 |
 | REQ-EXP-02 | Every report can be exported as a PDF file. | M | Brief B3; Guide §3 |
 | REQ-EXP-03 | Export files open correctly, including when the report has no data. CSV values that could run as spreadsheet formulas are neutralised. | M | Guide §3 ("generated and opened") |
-| REQ-ANA-06 | Branch filtering is added to the reports after the multi-branch model is complete. | S | Guide §3 ("later if needed") |
+| REQ-ANA-06 | Branch filtering can be added to the reports once the multi-branch model is complete. | S | Guide §3 ("later if needed") |
 
 ### 1.4 General
 
@@ -94,36 +94,37 @@ Priority: **M** = must have (stated in the brief or guide), **S** = should have 
 
 ## 3. Traceability table
 
-Status values: **Built** = code written; **Tested** = test executed and evidence saved (fill in when done).
+Status values: **Built and tested** = the code is written and the test was run and passed (see `04_Test_Plan_and_Evidence_Log.md`). **Not built** = left out of my part for the reason given.
 
 | Requirement | Implemented in | Acceptance criteria | Test cases | Status |
 |---|---|---|---|---|
-| REQ-API-01 | `Controllers/Api/CatalogApiController.cs` (`GetItems`) | AC-API-01, 02 | TC-API-01, 02, 03 | Built |
-| REQ-API-02 | `CatalogApiController.GetItem` | AC-API-03 | TC-API-04, 05, 06 | Built |
-| REQ-API-03 | `CatalogApiController.GetCategories` | AC-API-04 | TC-API-07 | Built |
-| REQ-API-04 | `CatalogApiController.GetStatus` | AC-API-05 | TC-API-08 | Built |
-| REQ-API-05 | `CatalogApiController` (problem details), `[ApiController]` model validation | AC-API-06 | TC-API-09, 10 | Built |
-| REQ-API-06 | Only `[HttpGet]` actions exist; CORS policy allows GET/HEAD only (`Program.cs`) | AC-API-07 | TC-API-11 | Built |
-| REQ-API-07 | `Models/Api/ApiDtos.cs` (DTOs instead of entities) | AC-API-08 | TC-API-12 | Built |
-| REQ-API-08 | `CatalogApiController.GetItemByCode` | AC-API-09 | TC-API-13 | Built |
-| REQ-API-09 | `Program.cs` (`AddOpenApi`, `MapOpenApi`), `wwwroot/api-docs.html` | AC-API-10 | TC-API-14 | Built |
-| REQ-API-10 | `CatalogApiController.GetItems` (page, pageSize, filters) | AC-API-01, 02 | TC-API-02, 03 | Built |
-| REQ-IMP-01 | `Controllers/ImportController.cs` (`[Authorize(Roles = "Admin")]`) | AC-IMP-01 | TC-IMP-01 | Built |
-| REQ-IMP-02 | `Services/CsvImportService.cs` (`EvaluateRow`, data annotations) | AC-IMP-02, 03 | TC-IMP-02, 03 | Built |
-| REQ-IMP-03 | `CsvImportService`, `Views/Import/Index.cshtml` | AC-IMP-03 | TC-IMP-03 | Built |
-| REQ-IMP-04 | `CsvImportService` (existing and in-file duplicate checks) | AC-IMP-03, 05 | TC-IMP-03, 05 | Built |
-| REQ-IMP-05 | `CsvImportService`, `Services/CsvParser.cs`, `ImportController.Preview` | AC-IMP-04 | TC-IMP-04a to 04g | Built |
-| REQ-IMP-06 | `CsvImportService` (transaction in `ProcessAsync`) | AC-IMP-02, 03, 05 | TC-IMP-02, 03, 05 | Built |
-| REQ-IMP-07 | `ImportController.Preview` / `Confirm`, `Views/Import/Index.cshtml` | AC-IMP-02 | TC-IMP-02 | Built |
-| REQ-IMP-08 | `ImportController.Template`, `CsvImportService.BuildTemplate` | AC-IMP-06 | TC-IMP-06 | Built |
-| REQ-ANA-01 | `Services/ReportService.cs` (`BuildBorrowingAsync`) | AC-ANA-01 | TC-ANA-01 | Built |
-| REQ-ANA-02 | `ReportService.BuildFinesAsync` | AC-ANA-01 | TC-ANA-01 | Built |
-| REQ-ANA-03 | `ReportService.BuildInventoryAsync` | AC-ANA-01 | TC-ANA-01 | Built |
-| REQ-ANA-04 | `ReportsController.Index`, `ReportService.NormaliseRange` | AC-ANA-02 | TC-ANA-02 | Built |
-| REQ-ANA-05 | `ReportsController` (`[Authorize(Roles = "Manager,Admin")]`) | AC-ANA-03 | TC-ANA-03 | Built |
-| REQ-EXP-01 | `Services/ReportExporter.cs` (`ToCsv`), `Services/CsvWriter.cs` | AC-EXP-01 | TC-EXP-01 | Built |
-| REQ-EXP-02 | `ReportExporter.ToPdf` (QuestPDF) | AC-EXP-02 | TC-EXP-02 | Built |
-| REQ-EXP-03 | `CsvWriter.Escape` (formula guard), "No data" messages in `ReportExporter` | AC-EXP-03 | TC-EXP-03 | Built |
-| REQ-ANA-06 | Not yet done: depends on the multi-branch model (see Notes) | – | – | Pending Taief's branch model |
-| REQ-GEN-01 | Whole solution | AC-GEN-01 | TC-GEN-01 | Built |
-| REQ-GEN-02 | Uses `ApplicationDbContext`, `Item`/`Loan`/`Fine` entities and existing roles | AC-GEN-01 | TC-GEN-01 | Built |
+| REQ-API-01 | `Controllers/Api/CatalogApiController.cs` (`GetItems`) | AC-API-01, 02 | TC-API-01, 02, 03 | Built and tested |
+| REQ-API-02 | `CatalogApiController.GetItem` | AC-API-03 | TC-API-04, 05, 06 | Built and tested |
+| REQ-API-03 | `CatalogApiController.GetCategories` | AC-API-04 | TC-API-07 | Built and tested |
+| REQ-API-04 | `CatalogApiController.GetStatus` | AC-API-05 | TC-API-08 | Built and tested |
+| REQ-API-05 | `CatalogApiController` (problem details), `[ApiController]` model validation | AC-API-06 | TC-API-09, 10 | Built and tested |
+| REQ-API-06 | Only `[HttpGet]` actions exist; CORS policy allows GET/HEAD only (`Program.cs`) | AC-API-07 | TC-API-11 | Built and tested |
+| REQ-API-07 | `Models/Api/ApiDtos.cs` (DTOs instead of entities) | AC-API-08 | TC-API-12 | Built and tested |
+| REQ-API-08 | `CatalogApiController.GetItemByCode` | AC-API-09 | TC-API-13 | Built and tested |
+| REQ-API-09 | `Program.cs` (`AddOpenApi`, `MapOpenApi`), `wwwroot/api-docs.html` | AC-API-10 | TC-API-14 | Built and tested |
+| REQ-API-10 | `CatalogApiController.GetItems` (page, pageSize, filters) | AC-API-01, 02 | TC-API-02, 03 | Built and tested |
+| REQ-IMP-01 | `Controllers/ImportController.cs` (`[Authorize(Roles = "Admin")]`) | AC-IMP-01 | TC-IMP-01 | Built and tested |
+| REQ-IMP-02 | `Services/CsvImportService.cs` (`EvaluateRow`, data annotations) | AC-IMP-02, 03 | TC-IMP-02, 03 | Built and tested |
+| REQ-IMP-03 | `CsvImportService`, `Views/Import/Index.cshtml` | AC-IMP-03 | TC-IMP-03 | Built and tested |
+| REQ-IMP-04 | `CsvImportService` (existing and in-file duplicate checks) | AC-IMP-03, 05 | TC-IMP-03, 05 | Built and tested |
+| REQ-IMP-05 | `CsvImportService`, `Services/CsvParser.cs`, `ImportController.Preview` | AC-IMP-04 | TC-IMP-04a to 04g | Built and tested |
+| REQ-IMP-06 | `CsvImportService` (transaction in `ProcessAsync`) | AC-IMP-02, 03, 05 | TC-IMP-02, 03, 05 | Built and tested |
+| REQ-IMP-07 | `ImportController.Preview` / `Confirm`, `Views/Import/Index.cshtml` | AC-IMP-02 | TC-IMP-02 | Built and tested |
+| REQ-IMP-08 | `ImportController.Template`, `CsvImportService.BuildTemplate` | AC-IMP-06 | TC-IMP-06 | Built and tested |
+| REQ-ANA-01 | `Services/ReportService.cs` (`BuildBorrowingAsync`) | AC-ANA-01 | TC-ANA-01 | Built and tested |
+| REQ-ANA-02 | `ReportService.BuildFinesAsync` | AC-ANA-01 | TC-ANA-01 | Built and tested |
+| REQ-ANA-03 | `ReportService.BuildInventoryAsync` | AC-ANA-01 | TC-ANA-01 | Built and tested |
+| REQ-ANA-04 | `ReportsController.Index`, `ReportService.NormaliseRange` | AC-ANA-02 | TC-ANA-02 | Built and tested |
+| REQ-ANA-05 | `ReportsController` (`[Authorize(Roles = "Manager,Admin")]`) | AC-ANA-03 | TC-ANA-03 | Built and tested |
+| REQ-EXP-01 | `Services/ReportExporter.cs` (`ToCsv`), `Services/CsvWriter.cs` | AC-EXP-01 | TC-EXP-01 | Built and tested |
+| REQ-EXP-02 | `ReportExporter.ToPdf` (QuestPDF) | AC-EXP-02 | TC-EXP-02 | Built and tested |
+| REQ-EXP-03 | `CsvWriter.Escape` (formula guard), "No data" messages in `ReportExporter` | AC-EXP-03 | TC-EXP-03 | Built and tested |
+| REQ-ANA-06 | Not built: it needs the multi-branch model, which is Taief's part (see the notes) | – | – | Not built |
+| REQ-GEN-01 | Whole solution | AC-GEN-01 | TC-GEN-01 | Built and tested |
+| REQ-GEN-02 | Uses `ApplicationDbContext`, `Item`/`Loan`/`Fine` entities and existing roles | AC-GEN-01 | TC-GEN-01 | Built and tested |
+
