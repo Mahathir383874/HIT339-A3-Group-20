@@ -6546,11 +6546,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\Student\\Desktop\\HIT339\\Bibliotheca_Kiosk_Setup_Achintha\\Bibliotheca\\HIT-339_A2_Nawshin\\Bibliotheca.csproj",
+      "projectUniqueName": "C:\\Users\\Student\\Desktop\\HIT339\\Assignment\\HIT339-A3-Group-20\\HIT-339_A2_Nawshin\\Bibliotheca.csproj",
       "projectName": "Bibliotheca",
-      "projectPath": "C:\\Users\\Student\\Desktop\\HIT339\\Bibliotheca_Kiosk_Setup_Achintha\\Bibliotheca\\HIT-339_A2_Nawshin\\Bibliotheca.csproj",
+      "projectPath": "C:\\Users\\Student\\Desktop\\HIT339\\Assignment\\HIT339-A3-Group-20\\HIT-339_A2_Nawshin\\Bibliotheca.csproj",
       "packagesPath": "C:\\Users\\Student\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\Student\\Desktop\\HIT339\\Bibliotheca_Kiosk_Setup_Achintha\\Bibliotheca\\HIT-339_A2_Nawshin\\obj\\",
+      "outputPath": "C:\\Users\\Student\\Desktop\\HIT339\\Assignment\\HIT339-A3-Group-20\\HIT-339_A2_Nawshin\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
