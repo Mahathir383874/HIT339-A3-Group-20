@@ -1,0 +1,64 @@
+@model KioskStartViewModel
+@using Microsoft.Extensions.Options
+@using Bibliotheca.Services
+@inject IOptions<KioskOptions> KioskSettings
+@{
+    ViewData["Title"] = "Welcome";
+    var kiosk = KioskSettings.Value;
+}
+
+<section class="kiosk-start">
+    <div class="kiosk-start-intro">
+        <h1 class="kiosk-title">Welcome to the library</h1>
+        <p class="kiosk-lead">Scan your library card to see your loans, check due dates and fines, and borrow items yourself.</p>
+
+        <a asp-action="Search" class="kiosk-btn kiosk-btn-outline kiosk-btn-lg kiosk-browse">
+            <i class="bi bi-search" aria-hidden="true"></i> Just browse the catalogue
+        </a>
+    </div>
+
+    <div class="kiosk-card kiosk-start-card">
+        <div class="kiosk-scan-illustration" aria-hidden="true">
+            <i class="bi bi-person-vcard"></i>
+        </div>
+        <h2 class="kiosk-h2">Scan or type your card number</h2>
+
+        @if (Model.ErrorMessage != null)
+        {
+            <div class="kiosk-alert kiosk-alert-error" role="alert" id="card-error">
+                <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i> @Model.ErrorMessage
+            </div>
+        }
+
+        <form asp-action="Index" method="post" autocomplete="off" class="kiosk-form" data-kiosk-scan-form>
+            <label asp-for="CardNumber" class="kiosk-label"></label>
+            <input asp-for="CardNumber" class="kiosk-input" placeholder="e.g. CRD-1001"
+                   autofocus inputmode="text" autocapitalize="characters" spellcheck="false"
+                   aria-describedby="card-help @(Model.ErrorMessage != null ? "card-error" : "")"
+                   disabled="@Model.IsLockedOut" />
+            <span asp-validation-for="CardNumber" class="kiosk-field-error"></span>
+            <p id="card-help" class="kiosk-help">Hold the barcode on your card under the scanner, or use the keypad.</p>
+
+            <div class="kiosk-keypad" data-target="CardNumber" data-prefixes="CRD-" aria-label="On-screen keypad"></div>
+
+            <div class="kiosk-actions-row">
+                @if (kiosk.EnableCameraScan)
+                {
+                    <button type="button" class="kiosk-btn kiosk-btn-outline kiosk-btn-lg" data-camera-scan="CardNumber" disabled="@Model.IsLockedOut">
+                        <i class="bi bi-qr-code-scan" aria-hidden="true"></i> Scan with camera
+                    </button>
+                }
+                <button type="submit" class="kiosk-btn kiosk-btn-primary kiosk-btn-lg" disabled="@Model.IsLockedOut">
+                    <i class="bi bi-arrow-right-circle" aria-hidden="true"></i> Continue
+                </button>
+            </div>
+
+            @if (Model.IsLockedOut)
+            {
+                <p class="kiosk-help" data-kiosk-lockout="@Model.LockoutSecondsRemaining">
+                    You can try again in <strong data-kiosk-lockout-count>@Model.LockoutSecondsRemaining</strong> seconds.
+                </p>
+            }
+        </form>
+    </div>
+</section>

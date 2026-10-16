@@ -1,0 +1,299 @@
+/* =====================================================================
+   Bibliotheca – Public Self-Service Kiosk
+   Touch-first layout: large targets (min 56–72px), high contrast text,
+   strong focus rings, no hover-only affordances.
+   ===================================================================== */
+
+:root {
+  --k-primary: #4338ca;
+  --k-primary-dark: #312e81;
+  --k-primary-soft: #eef2ff;
+  --k-success: #047857;
+  --k-success-soft: #ecfdf5;
+  --k-warning: #b45309;
+  --k-warning-soft: #fffbeb;
+  --k-danger: #b91c1c;
+  --k-danger-soft: #fef2f2;
+  --k-bg: #f1f5f9;
+  --k-card: #ffffff;
+  --k-text: #0f172a;
+  --k-muted: #475569;
+  --k-border: #cbd5e1;
+  --k-focus: #f59e0b;
+  --k-radius: 18px;
+  --k-shadow: 0 6px 20px -8px rgb(15 23 42 / 0.25);
+  --k-font: 'Segoe UI', system-ui, -apple-system, Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html { font-size: 18px; }
+
+body.kiosk-body {
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--k-bg);
+  color: var(--k-text);
+  font-family: var(--k-font);
+  line-height: 1.45;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;          /* no double-tap zoom delay */
+  user-select: none;                    /* kiosk: avoid accidental text selection */
+}
+
+body.kiosk-body input, body.kiosk-body textarea { user-select: text; }
+
+/* Accessibility: visible focus everywhere */
+.kiosk-body :focus-visible {
+  outline: 4px solid var(--k-focus) !important;
+  outline-offset: 3px;
+  box-shadow: none !important;
+}
+
+.kiosk-skip {
+  position: absolute; left: -9999px; top: 0;
+  background: var(--k-text); color: #fff; padding: .75rem 1rem; z-index: 1000;
+}
+.kiosk-skip:focus { left: 1rem; top: 1rem; }
+
+/* ---------- Header / nav ---------- */
+.kiosk-header {
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  padding: .9rem clamp(1rem, 3vw, 2.5rem);
+  background: var(--k-primary-dark); color: #fff;
+}
+.kiosk-brand { display: flex; align-items: center; gap: .8rem; color: #fff; text-decoration: none; }
+.kiosk-brand > i { font-size: 2.2rem; }
+.kiosk-brand strong { display: block; font-size: 1.35rem; letter-spacing: .01em; }
+.kiosk-brand small { display: block; font-size: .85rem; opacity: .85; }
+.kiosk-header-right { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; justify-content: flex-end; }
+.kiosk-clock { font-size: 1.1rem; font-variant-numeric: tabular-nums; opacity: .9; }
+.kiosk-patron { font-weight: 600; font-size: 1.05rem; }
+
+.kiosk-nav {
+  display: flex; gap: .5rem; flex-wrap: wrap;
+  padding: .6rem clamp(1rem, 3vw, 2.5rem);
+  background: #fff; border-bottom: 1px solid var(--k-border);
+}
+.kiosk-nav-link {
+  display: inline-flex; align-items: center; gap: .5rem;
+  min-height: 56px; padding: 0 1.25rem; border-radius: 999px;
+  color: var(--k-text); text-decoration: none; font-weight: 600; font-size: 1.05rem;
+  border: 2px solid transparent;
+}
+.kiosk-nav-link:active { background: var(--k-primary-soft); }
+.kiosk-nav-link.active { background: var(--k-primary-soft); color: var(--k-primary); border-color: var(--k-primary); }
+
+.kiosk-main {
+  flex: 1;
+  width: 100%; max-width: 1280px; margin: 0 auto;
+  padding: clamp(1rem, 3vw, 2.5rem);
+}
+.kiosk-main:focus { outline: none; }
+
+.kiosk-footer {
+  display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
+  padding: .9rem clamp(1rem, 3vw, 2.5rem);
+  background: #fff; border-top: 1px solid var(--k-border); color: var(--k-muted); font-size: .95rem;
+}
+
+/* ---------- Typography ---------- */
+.kiosk-title { font-size: clamp(1.8rem, 3.2vw, 2.6rem); font-weight: 800; margin: 0 0 .35rem; line-height: 1.15; }
+.kiosk-lead { font-size: 1.15rem; color: var(--k-muted); }
+.kiosk-h2 { font-size: 1.35rem; font-weight: 700; margin: 0 0 1rem; display: flex; align-items: center; gap: .5rem; }
+.kiosk-help { color: var(--k-muted); font-size: 1rem; margin: .5rem 0 0; }
+.kiosk-label { display: block; font-weight: 700; font-size: 1.05rem; margin-bottom: .45rem; }
+.kiosk-empty { color: var(--k-muted); font-size: 1.05rem; margin: 0; }
+
+/* ---------- Cards / layout ---------- */
+.kiosk-card {
+  background: var(--k-card); border-radius: var(--k-radius); box-shadow: var(--k-shadow);
+  padding: clamp(1.1rem, 2.5vw, 2rem); border: 1px solid #e2e8f0;
+}
+.kiosk-page-head {
+  display: flex; justify-content: space-between; align-items: flex-end; gap: 1rem; flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+}
+.kiosk-grid-2 { display: grid; grid-template-columns: 1.2fr 1fr; gap: 1.5rem; align-items: start; }
+.kiosk-stack { display: grid; gap: 1.5rem; }
+@media (max-width: 900px) { .kiosk-grid-2 { grid-template-columns: 1fr; } }
+
+.kiosk-start { display: grid; grid-template-columns: 1fr 1.1fr; gap: 2rem; align-items: center; min-height: 60vh; }
+@media (max-width: 900px) { .kiosk-start { grid-template-columns: 1fr; } }
+.kiosk-start .kiosk-title { font-size: clamp(2.2rem, 4.5vw, 3.4rem); }
+.kiosk-browse { margin-top: 1.25rem; }
+.kiosk-start-card { text-align: left; }
+.kiosk-scan-illustration {
+  width: 84px; height: 84px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--k-primary-soft); color: var(--k-primary); font-size: 2.6rem; margin-bottom: 1rem;
+}
+
+/* ---------- Buttons ---------- */
+.kiosk-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: .55rem;
+  min-height: 56px; padding: 0 1.4rem; border-radius: 14px;
+  font-size: 1.1rem; font-weight: 700; text-decoration: none; cursor: pointer;
+  border: 2px solid transparent; transition: transform .05s ease, background .15s ease;
+  white-space: nowrap;
+}
+.kiosk-btn:active { transform: scale(.97); }
+.kiosk-btn[disabled] { opacity: .5; pointer-events: none; }
+.kiosk-btn-lg { min-height: 64px; padding: 0 1.75rem; font-size: 1.2rem; }
+.kiosk-btn-xl { min-height: 76px; padding: 0 2.25rem; font-size: 1.35rem; }
+.kiosk-btn-primary { background: var(--k-primary); color: #fff; }
+.kiosk-btn-primary:hover { background: var(--k-primary-dark); color: #fff; }
+.kiosk-btn-success { background: var(--k-success); color: #fff; }
+.kiosk-btn-success:hover { background: #065f46; color: #fff; }
+.kiosk-btn-outline { background: #fff; color: var(--k-primary); border-color: var(--k-primary); }
+.kiosk-btn-outline:hover { background: var(--k-primary-soft); color: var(--k-primary-dark); }
+.kiosk-btn-end { background: #fff; color: var(--k-danger); border-color: #fecaca; }
+.kiosk-btn-end:hover { background: var(--k-danger-soft); color: var(--k-danger); }
+.kiosk-header .kiosk-btn-end { min-height: 52px; }
+.kiosk-actions-row { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; margin-top: 1rem; }
+.kiosk-page-head .kiosk-actions-row { margin-top: 0; }
+
+/* ---------- Forms ---------- */
+.kiosk-input {
+  width: 100%; min-height: 72px; padding: 0 1.25rem;
+  font-size: 1.6rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+  border: 3px solid var(--k-border); border-radius: 14px; background: #fff; color: var(--k-text);
+}
+.kiosk-input::placeholder { text-transform: none; letter-spacing: normal; font-weight: 500; color: #94a3b8; }
+.kiosk-search-form .kiosk-input { text-transform: none; letter-spacing: normal; font-size: 1.35rem; }
+.kiosk-input:focus { border-color: var(--k-primary); outline: none; }
+.kiosk-input[disabled] { background: #e2e8f0; }
+.kiosk-field-error { display: block; color: var(--k-danger); font-weight: 600; margin-top: .4rem; }
+.kiosk-search-row { display: flex; gap: .75rem; }
+@media (max-width: 640px) { .kiosk-search-row { flex-direction: column; } }
+
+/* On-screen keypad (built by kiosk.js) */
+.kiosk-keypad { display: grid; grid-template-columns: repeat(4, 1fr); gap: .5rem; margin-top: 1rem; }
+.kiosk-key {
+  min-height: 60px; font-size: 1.45rem; font-weight: 700; border-radius: 12px;
+  border: 2px solid var(--k-border); background: #f8fafc; color: var(--k-text); cursor: pointer;
+}
+.kiosk-key:active { background: var(--k-primary-soft); border-color: var(--k-primary); }
+.kiosk-key-wide { grid-column: span 2; }
+.kiosk-key-prefix { font-size: 1.1rem; color: var(--k-primary); }
+.kiosk-key-action { font-size: 1.05rem; color: var(--k-muted); }
+
+/* Category chips */
+.kiosk-chips { display: flex; flex-wrap: wrap; gap: .6rem; margin: 1.25rem 0 0; border: 0; padding: 0; }
+.kiosk-chips legend { width: 100%; }
+.kiosk-chip {
+  display: inline-flex; align-items: center; gap: .45rem; min-height: 56px; padding: 0 1.3rem;
+  border-radius: 999px; border: 2px solid var(--k-border); background: #fff; font-weight: 600; font-size: 1.05rem; cursor: pointer;
+}
+.btn-check:checked + .kiosk-chip { background: var(--k-primary); border-color: var(--k-primary); color: #fff; }
+.btn-check:focus-visible + .kiosk-chip { outline: 4px solid var(--k-focus); outline-offset: 3px; }
+
+/* ---------- Alerts ---------- */
+.kiosk-alert {
+  display: flex; gap: .75rem; align-items: flex-start;
+  padding: 1rem 1.25rem; border-radius: 14px; margin-bottom: 1.25rem; font-size: 1.1rem; font-weight: 500;
+  border-left: 6px solid;
+}
+.kiosk-alert > i { font-size: 1.35rem; line-height: 1.2; }
+.kiosk-alert-info { background: var(--k-primary-soft); border-color: var(--k-primary); color: var(--k-primary-dark); }
+.kiosk-alert-error { background: var(--k-danger-soft); border-color: var(--k-danger); color: #7f1d1d; }
+.kiosk-alert-warning { background: var(--k-warning-soft); border-color: var(--k-warning); color: #78350f; }
+
+/* ---------- Stats ---------- */
+.kiosk-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+@media (max-width: 900px) { .kiosk-stats { grid-template-columns: repeat(2, 1fr); } }
+.kiosk-stat {
+  background: #fff; border-radius: var(--k-radius); padding: 1.1rem 1.25rem; border: 1px solid #e2e8f0;
+  display: flex; flex-direction: column; box-shadow: var(--k-shadow);
+}
+.kiosk-stat-value { font-size: 2.1rem; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.kiosk-stat-label { color: var(--k-muted); font-weight: 600; }
+.kiosk-stat.is-danger { background: var(--k-danger-soft); border-color: #fecaca; }
+.kiosk-stat.is-danger .kiosk-stat-value { color: var(--k-danger); }
+.kiosk-stat.is-warning { background: var(--k-warning-soft); border-color: #fde68a; }
+.kiosk-stat.is-warning .kiosk-stat-value { color: var(--k-warning); }
+
+/* ---------- Lists ---------- */
+.kiosk-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .75rem; }
+.kiosk-list-item {
+  display: flex; justify-content: space-between; gap: 1rem; align-items: center;
+  padding: .9rem 1rem; border-radius: 14px; background: #f8fafc; border: 1px solid #e2e8f0;
+}
+.kiosk-list-item.is-overdue { background: var(--k-danger-soft); border-color: #fecaca; }
+.kiosk-list-main, .kiosk-list-side { display: flex; flex-direction: column; gap: .15rem; }
+.kiosk-list-side { align-items: flex-end; text-align: right; }
+.kiosk-item-name { font-weight: 700; font-size: 1.1rem; display: block; }
+.kiosk-item-name-lg { font-size: 1.45rem; }
+.kiosk-item-meta { color: var(--k-muted); font-size: .98rem; display: block; }
+.kiosk-amount { font-weight: 800; font-size: 1.25rem; color: var(--k-warning); }
+
+.kiosk-badge {
+  display: inline-flex; align-items: center; gap: .35rem;
+  padding: .35rem .8rem; border-radius: 999px; font-weight: 700; font-size: .95rem; white-space: nowrap;
+}
+.kiosk-badge-ok { background: var(--k-success-soft); color: var(--k-success); }
+.kiosk-badge-warning { background: var(--k-warning-soft); color: var(--k-warning); }
+.kiosk-badge-danger { background: var(--k-danger); color: #fff; }
+.kiosk-badge-neutral { background: #e2e8f0; color: #334155; }
+
+/* ---------- Search results ---------- */
+.kiosk-search-form { margin-bottom: 1.25rem; }
+.kiosk-result-count { font-size: 1.1rem; font-weight: 600; color: var(--k-muted); }
+.kiosk-results { list-style: none; margin: 0; padding: 0; display: grid; gap: .9rem; }
+.kiosk-result {
+  display: grid; grid-template-columns: 84px 1fr auto; gap: 1.1rem; align-items: center;
+  background: #fff; border-radius: var(--k-radius); padding: .9rem 1.1rem; border: 1px solid #e2e8f0; box-shadow: var(--k-shadow);
+}
+@media (max-width: 640px) {
+  .kiosk-result { grid-template-columns: 64px 1fr; }
+  .kiosk-result-action { grid-column: 1 / -1; }
+}
+.kiosk-result-img {
+  width: 84px; height: 84px; border-radius: 12px; background: var(--k-primary-soft); color: var(--k-primary);
+  display: grid; place-items: center; font-size: 2rem; overflow: hidden; position: relative;
+}
+.kiosk-result-img img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.kiosk-result-img-lg { width: 120px; height: 120px; flex: none; }
+.kiosk-result-action { display: flex; gap: .75rem; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.kiosk-empty-state { text-align: center; color: var(--k-muted); font-size: 1.15rem; }
+.kiosk-empty-state i { font-size: 2.5rem; color: var(--k-primary); }
+
+/* ---------- Checkout / receipt ---------- */
+.kiosk-confirm-item { display: flex; gap: 1.25rem; align-items: center; margin-bottom: 1rem; }
+.kiosk-confirm.is-blocked { opacity: .85; }
+.kiosk-due { font-size: 1.15rem; background: var(--k-success-soft); color: #064e3b; padding: .9rem 1.1rem; border-radius: 12px; }
+.kiosk-due-lg { font-size: 1.3rem; display: inline-block; }
+.kiosk-receipt { max-width: 760px; margin: 2rem auto; text-align: center; }
+.kiosk-receipt-icon { font-size: 4.5rem; color: var(--k-success); line-height: 1; margin-bottom: .5rem; }
+.kiosk-receipt-item { background: #f8fafc; border-radius: 14px; padding: 1.1rem; margin: 0 auto 1.25rem; border: 1px solid #e2e8f0; }
+
+/* ---------- Idle warning overlay ---------- */
+.kiosk-idle {
+  position: fixed; inset: 0; z-index: 2000; display: grid; place-items: center;
+  background: rgb(15 23 42 / .7); padding: 1rem;
+}
+.kiosk-idle[hidden] { display: none; }
+.kiosk-idle-card {
+  background: #fff; border-radius: 24px; padding: 2.25rem; max-width: 560px; width: 100%; text-align: center;
+  box-shadow: 0 25px 50px -12px rgb(0 0 0 / .45);
+}
+.kiosk-idle-card h2 { font-size: 2rem; font-weight: 800; }
+.kiosk-idle-card p { font-size: 1.2rem; color: var(--k-muted); }
+.kiosk-idle-card .kiosk-actions-row { justify-content: center; }
+.kiosk-idle-icon { font-size: 3.2rem; color: var(--k-warning); }
+#kiosk-idle-count { color: var(--k-danger); font-variant-numeric: tabular-nums; }
+
+/* ---------- Camera scanner overlay ---------- */
+.kiosk-camera {
+  position: fixed; inset: 0; z-index: 2100; background: rgb(15 23 42 / .85);
+  display: grid; place-items: center; padding: 1rem;
+}
+.kiosk-camera-card { background: #fff; border-radius: 24px; padding: 1.5rem; width: min(560px, 100%); text-align: center; }
+.kiosk-camera-view { width: 100%; min-height: 280px; border-radius: 14px; overflow: hidden; background: #0f172a; }
+.kiosk-camera-status { margin: .9rem 0 0; color: var(--k-muted); font-size: 1.05rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  .kiosk-btn { transition: none; }
+  .kiosk-btn:active { transform: none; }
+}
