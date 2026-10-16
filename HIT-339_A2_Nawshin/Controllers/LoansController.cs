@@ -5,6 +5,7 @@ using Bibliotheca.Data;
 using Bibliotheca.Models.Entities;
 using Bibliotheca.Models.Enums;
 using Bibliotheca.Models.ViewModels;
+using Bibliotheca.Services;
 
 namespace Bibliotheca.Controllers
 {
@@ -12,11 +13,13 @@ namespace Bibliotheca.Controllers
     public class LoansController : Controller
     {
         private readonly ApplicationDbContext _context;
+        private readonly ICirculationService _circulation;
         private const decimal DAILY_FINE_RATE = 1.00m; // $1.00 per day overdue
 
-        public LoansController(ApplicationDbContext context)
+        public LoansController(ApplicationDbContext context, ICirculationService circulation)
         {
             _context = context;
+            _circulation = circulation;
         }
 
         // GET: /Loans
@@ -108,60 +111,29 @@ namespace Bibliotheca.Controllers
                 return View(model);
             }
 
-            // 1. Verify Borrower
-            var borrower = await _context.Borrowers
-                .Include(b => b.Fines)
-                .FirstOrDefaultAsync(b => b.CardNumber.ToUpper() == model.CardNumber.Trim().ToUpper());
-
-            if (borrower == null)
+            // Borrower/item checks and loan creation live in the shared CirculationService,
+            // which is also used by the Public Self-Service Kiosk.
+            var result = await _circulation.CheckoutAsync(new CheckoutRequest
             {
-                ModelState.AddModelError("CardNumber", $"No borrower found with card number '{model.CardNumber}'.");
-                return View(model);
-            }
-
-            if (!borrower.IsActive)
-            {
-                ModelState.AddModelError("CardNumber", $"Borrower account '{borrower.FullName}' is inactive/suspended.");
-                return View(model);
-            }
-
-            // 2. Verify Item
-            var item = await _context.Items
-                .FirstOrDefaultAsync(i => i.LibraryCode.ToUpper() == model.LibraryCode.Trim().ToUpper());
-
-            if (item == null)
-            {
-                ModelState.AddModelError("LibraryCode", $"No library item found with code '{model.LibraryCode}'.");
-                return View(model);
-            }
-
-            if (item.Status != ItemStatus.Available)
-            {
-                ModelState.AddModelError("LibraryCode", $"Item '{item.Name}' is not available (Current Status: {item.Status}).");
-                return View(model);
-            }
-
-            // 3. Create Loan Record
-            var borrowDate = DateTime.UtcNow;
-            var dueDate = borrowDate.AddDays(model.LoanDays);
-
-            var loan = new Loan
-            {
-                ItemId = item.Id,
-                BorrowerId = borrower.Id,
-                BorrowDate = borrowDate,
-                DueDate = dueDate,
-                Status = LoanStatus.Active,
+                CardNumber = model.CardNumber,
+                LibraryCode = model.LibraryCode,
+                LoanDays = model.LoanDays,
                 Remarks = model.Remarks
-            };
+            });
 
-            // Update item status to Borrowed
-            item.Status = ItemStatus.Borrowed;
+            if (!result.Succeeded)
+            {
+                var field = result.Error switch
+                {
+                    CheckoutError.CardNotFound or CheckoutError.BorrowerInactive => nameof(model.CardNumber),
+                    CheckoutError.InvalidLoanDays => nameof(model.LoanDays),
+                    _ => nameof(model.LibraryCode)
+                };
+                ModelState.AddModelError(field, result.Message);
+                return View(model);
+            }
 
-            _context.Loans.Add(loan);
-            await _context.SaveChangesAsync();
-
-            TempData["SuccessMessage"] = $"Successfully issued '{item.Name}' ({item.LibraryCode}) to {borrower.FullName} (Due: {dueDate.ToString("d MMM yyyy")}).";
+            TempData["SuccessMessage"] = result.Message;
             return RedirectToAction(nameof(Index));
         }
 
