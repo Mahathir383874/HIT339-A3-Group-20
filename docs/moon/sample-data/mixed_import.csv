@@ -1,0 +1,11 @@
+ItemType,Name,LibraryCode,Description,ReplacementCost,ImageUrl,Author,Genre,ISBN,PageCount,Artist,ReleaseYear,RecordLabel,DurationMinutes,ToyType,RecommendedAge,Manufacturer,SafetyWarning
+Book,Station Eleven,BOK-9101,,22.00,,Emily St. John Mandel,Fiction,978-0385353304,333,,,,,,,,
+Music,Rumours,MUS-9101,,17.00,,,,,,Fleetwood Mac,1977,Warner Bros.,39,,,,
+Book,Missing Author And Bad Code,BOK-91,,15.00,,,Fiction,,,,,,,,,,
+Toy,Duplicate Of Existing Item,TOY-3001,,,,,,,,,,,,Puzzle,6+,,
+Book,Repeated Code In File,BOK-9101,,,,Someone,Fiction,,,,,,,,,,
+Magazine,Unknown Item Type,MAG-9101,,,,,,,,,,,,,,,
+Book,Page Count Is Text,BOK-9102,,,,Someone,Fiction,,abc,,,,,,,,
+Toy,Wooden Train Set,TOY-9101,,35.00,,,,,,,,,,Vehicle,3+,Brio,
+Music,Release Year Out Of Range,MUS-9102,,,,,,,,Old Band,1800,,,,,,
+Book,Bad Cost And Image,BOK-9103,,twenty,javascript:alert(1),Someone,Fiction,,,,,,,,,,
