@@ -43,6 +43,9 @@ builder.Services.AddControllersWithViews();
 builder.Services.AddScoped<ICirculationService, CirculationService>();
 builder.Services.Configure<KioskOptions>(builder.Configuration.GetSection(KioskOptions.SectionName));
 
+// [Moon] CSV bulk importer (Admin)
+builder.Services.AddScoped<Bibliotheca.Services.CsvImportService>();
+
 // Reservation summary shown on the kiosk account page.
 // Replace NoReservationSummaryProvider with the reservation module's implementation when it is ready.
 builder.Services.AddScoped<IReservationSummaryProvider, NoReservationSummaryProvider>();

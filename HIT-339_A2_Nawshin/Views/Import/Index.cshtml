@@ -1,0 +1,164 @@
+@using Bibliotheca.Models.ViewModels
+@using Bibliotheca.Services
+@model ImportPageViewModel
+@{
+    ViewData["Title"] = "Bulk Import Items (CSV)";
+    var report = Model.Report;
+}
+
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    <div>
+        <span class="badge role-admin mb-1"><i class="bi bi-shield-lock-fill me-1"></i> Admin Module</span>
+        <h2 class="fw-bold mb-0">Bulk Import Items (CSV)</h2>
+        <p class="text-muted small mb-0">Upload a CSV file to add many Books, Music albums and Toys at once. You will see a preview before anything is saved.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-custom" asp-action="Template"><i class="bi bi-download me-1"></i> Download template</a>
+        <a class="btn btn-outline-custom" asp-controller="Items" asp-action="Index"><i class="bi bi-grid me-1"></i> Catalog items</a>
+    </div>
+</div>
+
+<div class="card-custom p-3 p-md-4 mb-4">
+    <h5 class="fw-bold mb-3"><i class="bi bi-upload me-2"></i>1. Choose a file</h5>
+    <form asp-action="Preview" method="post" enctype="multipart/form-data" class="row g-3 align-items-end">
+        <div class="col-12 col-md-8">
+            <label for="csvFile" class="form-label">CSV file (max @(CsvImportService.MaxFileBytes / 1024) KB, up to @CsvImportService.MaxDataRows rows)</label>
+            <input type="file" id="csvFile" name="csvFile" class="form-control" accept=".csv,text/csv" required />
+        </div>
+        <div class="col-12 col-md-4">
+            <button type="submit" class="btn btn-primary-custom w-100"><i class="bi bi-search me-1"></i> Validate &amp; preview</button>
+        </div>
+    </form>
+
+    <details class="mt-3">
+        <summary class="small fw-semibold">Expected columns</summary>
+        <div class="small mt-2">
+            <p class="mb-1"><strong>Required:</strong> <code>ItemType</code> (Book, Music or Toy), <code>Name</code>, <code>LibraryCode</code> (format <code>AAA-0000</code>, e.g. BOK-9001).</p>
+            <p class="mb-1"><strong>Book:</strong> <code>Author</code>*, <code>Genre</code>*, ISBN, PageCount &nbsp;|&nbsp;
+               <strong>Music:</strong> <code>Artist</code>*, ReleaseYear, RecordLabel, DurationMinutes &nbsp;|&nbsp;
+               <strong>Toy:</strong> <code>ToyType</code>*, <code>RecommendedAge</code>*, Manufacturer, SafetyWarning</p>
+            <p class="mb-0"><strong>Optional for all:</strong> Description, ReplacementCost (default 25.00), ImageUrl. New items start as <em>Available</em>. (* = required for that type)</p>
+        </div>
+    </details>
+</div>
+
+@if (report != null)
+{
+    <div class="card-custom p-3 p-md-4 mb-4">
+        <h5 class="fw-bold mb-3">
+            <i class="bi bi-clipboard-check me-2"></i>
+            @(report.Committed ? "3. Import result" : "2. Validation preview")
+            <span class="text-muted fw-normal small">&mdash; @report.FileName</span>
+        </h5>
+
+        @foreach (var error in report.FileErrors)
+        {
+            <div class="alert alert-danger py-2"><i class="bi bi-x-octagon-fill me-2"></i>@error</div>
+        }
+        @foreach (var warning in report.FileWarnings)
+        {
+            <div class="alert alert-warning py-2"><i class="bi bi-exclamation-triangle-fill me-2"></i>@warning</div>
+        }
+
+        @if (report.Rows.Count > 0)
+        {
+            <div class="row g-3 mb-3">
+                <div class="col-6 col-md-3">
+                    <div class="stat-card"><div><div class="stat-value">@report.TotalRows</div><div class="stat-label">Rows read</div></div></div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="stat-card"><div><div class="stat-value text-success">@report.ValidCount</div><div class="stat-label">@(report.Committed ? "Imported" : "Valid")</div></div></div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="stat-card"><div><div class="stat-value text-danger">@report.InvalidCount</div><div class="stat-label">Invalid</div></div></div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="stat-card"><div><div class="stat-value text-warning">@report.DuplicateCount</div><div class="stat-label">Duplicates</div></div></div>
+                </div>
+            </div>
+
+            @if (report.Committed)
+            {
+                <div class="alert alert-success py-2">
+                    <i class="bi bi-check-circle-fill me-2"></i>
+                    @report.ImportedCount item(s) were added to the catalogue. Invalid and duplicate rows were skipped (listed below).
+                    <a asp-controller="Items" asp-action="Index" class="alert-link ms-2">View catalogue items</a>
+                </div>
+            }
+            else if (!report.HasFileErrors && report.ValidCount > 0)
+            {
+                <form asp-action="Confirm" method="post" class="mb-3">
+                    <textarea name="csvContent" hidden>@report.CsvContent</textarea>
+                    <input type="hidden" name="fileName" value="@report.FileName" />
+                    <div class="d-flex flex-wrap align-items-center gap-3">
+                        <button type="submit" class="btn btn-primary-custom">
+                            <i class="bi bi-check2-circle me-1"></i> Import @report.ValidCount valid row(s)
+                        </button>
+                        <span class="small text-muted">
+                            @if (report.InvalidCount + report.DuplicateCount > 0)
+                            {
+                                <text>The @(report.InvalidCount + report.DuplicateCount) invalid/duplicate row(s) will be skipped. Fix them in your file and upload again to add them later.</text>
+                            }
+                            else
+                            {
+                                <text>All rows passed validation.</text>
+                            }
+                        </span>
+                    </div>
+                </form>
+            }
+            else if (!report.HasFileErrors && report.ValidCount == 0)
+            {
+                <div class="alert alert-secondary py-2">No rows passed validation, so there is nothing to import. Fix the problems below and upload the file again.</div>
+            }
+
+            <div class="table-responsive">
+                <table class="table table-sm table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th style="width:70px">Row</th>
+                            <th style="width:110px">Result</th>
+                            <th>Type</th>
+                            <th>Code</th>
+                            <th>Title / Name</th>
+                            <th>Details</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in report.Rows)
+                        {
+                            var badge = row.Outcome == ImportRowOutcome.Valid ? "bg-success"
+                                      : row.Outcome == ImportRowOutcome.Duplicate ? "bg-warning text-dark"
+                                      : "bg-danger";
+                            var label = row.Outcome == ImportRowOutcome.Valid
+                                ? (report.Committed ? "Imported" : "Valid")
+                                : row.Outcome.ToString();
+                            <tr>
+                                <td>@row.RowNumber</td>
+                                <td><span class="badge @badge">@label</span></td>
+                                <td>@row.ItemType</td>
+                                <td><code>@row.LibraryCode</code></td>
+                                <td>@row.Name</td>
+                                <td class="small">
+                                    @if (row.Messages.Count == 0)
+                                    {
+                                        <span class="text-muted">No problems found.</span>
+                                    }
+                                    else
+                                    {
+                                        <ul class="mb-0 ps-3">
+                                            @foreach (var message in row.Messages)
+                                            {
+                                                <li>@message</li>
+                                            }
+                                        </ul>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+}
