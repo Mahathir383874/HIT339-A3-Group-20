@@ -1,0 +1,61 @@
+@model Bibliotheca.Models.Entities.Borrower
+@{
+    ViewData["Title"] = $"Delete Borrower - {Model.FullName}";
+    bool hasActiveLoans = (bool)(ViewBag.HasActiveLoans ?? false);
+    bool hasUnpaidFines = (bool)(ViewBag.HasUnpaidFines ?? false);
+}
+
+<div class="row justify-content-center py-4">
+    <div class="col-12 col-md-8 col-lg-6">
+        <div class="card-custom p-4 p-md-5 shadow-sm border-danger border-opacity-25">
+            <div class="text-center mb-4">
+                <div class="d-inline-flex p-3 rounded-circle bg-danger bg-opacity-10 text-danger mb-3">
+                    <i class="bi bi-person-x-fill fs-2"></i>
+                </div>
+                <h3 class="fw-bold text-danger">Remove Borrower Account?</h3>
+                <p class="text-muted small">Are you sure you want to remove this borrower card from the system?</p>
+            </div>
+
+            @if (hasActiveLoans)
+            {
+                <div class="alert alert-warning py-3 mb-3">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <strong>Cannot Delete:</strong> Borrower currently has active or overdue borrowed items. All loaned items must be returned first.
+                </div>
+            }
+
+            @if (hasUnpaidFines)
+            {
+                <div class="alert alert-danger py-3 mb-3">
+                    <i class="bi bi-cash-coin me-2"></i>
+                    <strong>Cannot Delete:</strong> Borrower has outstanding unpaid late fines. Fines must be cleared before removal.
+                </div>
+            }
+
+            <div class="bg-light p-3 rounded-3 mb-4">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="badge-code">@Model.CardNumber</span>
+                    <span class="badge @(Model.IsActive ? "bg-success" : "bg-danger")">@(Model.IsActive ? "Active" : "Suspended")</span>
+                </div>
+                <h5 class="fw-bold text-dark mb-1">@Model.FullName</h5>
+                <div class="small text-muted"><i class="bi bi-envelope me-1"></i>@Model.Email</div>
+                <div class="small text-muted"><i class="bi bi-telephone me-1"></i>@Model.Phone</div>
+            </div>
+
+            <form asp-action="Delete" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" asp-for="Id" />
+
+                <div class="d-flex justify-content-end gap-2">
+                    <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+                    @if (!hasActiveLoans && !hasUnpaidFines)
+                    {
+                        <button type="submit" class="btn btn-danger px-4">
+                            <i class="bi bi-trash me-1"></i> Confirm Delete
+                        </button>
+                    }
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

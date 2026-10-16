@@ -1,0 +1,134 @@
+@model Bibliotheca.Models.ViewModels.ProcessReturnViewModel
+@{
+    ViewData["Title"] = "Process Item Return";
+    bool isLate = Model.DaysLate > 0;
+}
+
+<div class="row justify-content-center py-3">
+    <div class="col-12 col-lg-8">
+        <div class="card-custom p-4 p-md-5 shadow-sm @(isLate ? "border-danger border-opacity-50" : "")">
+            <div class="d-flex align-items-center justify-content-between border-bottom pb-3 mb-4">
+                <div>
+                    <span class="badge @(isLate ? "bg-danger" : "role-reception") fw-bold text-uppercase px-2 py-1 mb-1">
+                        <i class="bi bi-box-arrow-in-left me-1"></i> Loan Desk Check-in
+                    </span>
+                    <h3 class="fw-bold mb-0">Process Item Return</h3>
+                </div>
+                <a asp-action="Index" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i> Back to Loans
+                </a>
+            </div>
+
+            <!-- Loan & Item Summary -->
+            <div class="bg-light p-3 rounded-3 mb-4">
+                <div class="row g-3">
+                    <div class="col-12 col-md-6">
+                        <span class="text-muted small d-block">Library Item</span>
+                        <div class="fw-bold text-dark fs-5">@Model.ItemName</div>
+                        <span class="badge-code">@Model.LibraryCode</span>
+                        <span class="badge badge-type ms-1">@Model.ItemType</span>
+                    </div>
+
+                    <div class="col-12 col-md-6">
+                        <span class="text-muted small d-block">Borrower / Patron</span>
+                        <div class="fw-bold text-dark fs-5">@Model.BorrowerName</div>
+                        <span class="badge bg-secondary font-monospace">@Model.CardNumber</span>
+                    </div>
+
+                    <div class="col-6 col-md-4 border-top pt-2">
+                        <span class="text-muted small d-block">Date Borrowed</span>
+                        <span class="fw-semibold">@Model.BorrowDate.ToString("d MMM yyyy")</span>
+                    </div>
+
+                    <div class="col-6 col-md-4 border-top pt-2">
+                        <span class="text-muted small d-block">Due Date</span>
+                        <span class="fw-semibold @(isLate ? "text-danger" : "text-dark")">@Model.DueDate.ToString("d MMM yyyy")</span>
+                    </div>
+
+                    <div class="col-12 col-md-4 border-top pt-2">
+                        <span class="text-muted small d-block">Return Date (Today)</span>
+                        <span class="fw-semibold text-primary">@Model.ReturnDate.ToString("d MMM yyyy")</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Overdue Fine Alert Card -->
+            @if (isLate)
+            {
+                <div class="alert alert-danger p-4 mb-4 rounded-3">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="fs-1 text-danger"><i class="bi bi-exclamation-octagon-fill"></i></div>
+                        <div class="flex-grow-1">
+                            <h5 class="fw-bold text-danger mb-1">Overdue Return Detected!</h5>
+                            <p class="mb-0 small text-danger-emphasis">
+                                This item is <strong>@Model.DaysLate days late</strong> past the due date.
+                                Standard late penalty: <strong>$1.00 per late day</strong>.
+                            </p>
+                        </div>
+                        <div class="text-end">
+                            <div class="fs-3 fw-bold text-danger">$@Model.CalculatedFine.ToString("F2")</div>
+                            <span class="badge bg-danger">Fine Incurred</span>
+                        </div>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="alert alert-success p-3 mb-4 rounded-3 d-flex align-items-center gap-2">
+                    <i class="bi bi-check-circle-fill fs-4 text-success"></i>
+                    <div>
+                        <strong>On-Time Return:</strong> This item is returned within the allowed loan period. No late fines apply.
+                    </div>
+                </div>
+            }
+
+            <form asp-action="Return" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" asp-for="LoanId" />
+                <input type="hidden" asp-for="DaysLate" />
+                <input type="hidden" asp-for="CalculatedFine" />
+
+                <div class="row g-3">
+                    <!-- Condition upon return -->
+                    <div class="col-12 col-md-6">
+                        <label asp-for="NewItemStatus" class="form-label fw-semibold small"></label>
+                        <select asp-for="NewItemStatus" class="form-select">
+                            <option value="@ItemStatus.Available">Available (Normal condition)</option>
+                            <option value="@ItemStatus.Damaged">Damaged (Needs repair/assessment)</option>
+                            <option value="@ItemStatus.Destroyed">Destroyed / Unusable</option>
+                        </select>
+                        <div class="form-text small">Sets the item's new catalog inventory status upon return.</div>
+                    </div>
+
+                    <!-- Fine Payment Handling -->
+                    @if (isLate)
+                    {
+                        <div class="col-12 col-md-6">
+                            <label class="form-label fw-semibold small">Fine Settlement</label>
+                            <div class="form-check p-3 bg-light rounded border">
+                                <input class="form-check-input ms-0 me-2" asp-for="PayFineImmediately" id="payNowCheck" />
+                                <label class="form-check-label fw-bold text-success" for="payNowCheck">
+                                    Collect $@Model.CalculatedFine.ToString("F2") now at desk (Mark Paid)
+                                </label>
+                                <div class="text-muted small mt-1">If unchecked, fine will be added to patron's outstanding debt balance.</div>
+                            </div>
+                        </div>
+                    }
+
+                    <!-- Remarks -->
+                    <div class="col-12">
+                        <label asp-for="Remarks" class="form-label fw-semibold small"></label>
+                        <textarea asp-for="Remarks" class="form-control" rows="2" placeholder="Optional notes regarding item condition, reason for delay, or payment receipt..."></textarea>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+                    <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+                    <button type="submit" class="btn btn-success px-4">
+                        <i class="bi bi-check-lg me-1"></i> Complete Return
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

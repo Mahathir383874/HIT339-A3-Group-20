@@ -1,0 +1,212 @@
+@model Bibliotheca.Models.Entities.Borrower
+@{
+    ViewData["Title"] = $"Borrower Profile - {Model.FullName}";
+    var activeLoans = Model.Loans.Where(l => l.Status == LoanStatus.Active || l.Status == LoanStatus.Overdue).ToList();
+    var pastLoans = Model.Loans.Where(l => l.Status == LoanStatus.Returned).ToList();
+    var unpaidFines = Model.Fines.Where(f => !f.IsPaid).ToList();
+    var totalUnpaid = unpaidFines.Sum(f => f.Amount);
+}
+
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    <div>
+        <span class="badge role-reception mb-1"><i class="bi bi-person-badge-fill me-1"></i> Patron Card Profile</span>
+        <h2 class="fw-bold mb-0">@Model.FullName</h2>
+        <span class="badge-code mt-1">@Model.CardNumber</span>
+    </div>
+    <div class="d-flex gap-2">
+        <a asp-controller="Loans" asp-action="Issue" asp-route-cardNumber="@Model.CardNumber" class="btn btn-primary-custom">
+            <i class="bi bi-box-arrow-right me-1"></i> Issue Item to Patron
+        </a>
+        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-primary">
+            <i class="bi bi-pencil me-1"></i> Edit
+        </a>
+        <a asp-action="Index" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i> Back
+        </a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Borrower Info Summary -->
+    <div class="col-12 col-lg-4">
+        <div class="card-custom p-4 mb-4">
+            <div class="d-flex align-items-center gap-3 mb-3">
+                <div class="d-inline-flex p-3 rounded-circle bg-primary bg-opacity-10 text-primary fs-3">
+                    <i class="bi bi-person-fill"></i>
+                </div>
+                <div>
+                    <h5 class="fw-bold mb-0">@Model.FullName</h5>
+                    <span class="badge @(Model.IsActive ? "bg-success" : "bg-danger")">
+                        @(Model.IsActive ? "Active Card" : "Suspended Card")
+                    </span>
+                </div>
+            </div>
+
+            <div class="border-top pt-3">
+                <div class="mb-2">
+                    <span class="text-muted small d-block">Email</span>
+                    <strong class="text-dark">@Model.Email</strong>
+                </div>
+                <div class="mb-2">
+                    <span class="text-muted small d-block">Phone Number</span>
+                    <strong class="text-dark">@Model.Phone</strong>
+                </div>
+                <div class="mb-2">
+                    <span class="text-muted small d-block">Residential Address</span>
+                    <span class="text-secondary">@(string.IsNullOrEmpty(Model.Address) ? "No address on file" : Model.Address)</span>
+                </div>
+                <div>
+                    <span class="text-muted small d-block">Registration Date</span>
+                    <span class="text-secondary">@Model.RegisteredDate.ToString("d MMMM yyyy")</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Fine Summary Box -->
+        <div class="card-custom p-4 border-@(totalUnpaid > 0 ? "danger" : "success") border-opacity-25">
+            <h6 class="fw-bold mb-3 d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-cash-coin me-1"></i> Outstanding Fines</span>
+                <span class="badge bg-@(totalUnpaid > 0 ? "danger" : "success") fs-6">$@totalUnpaid.ToString("F2")</span>
+            </h6>
+
+            @if (!unpaidFines.Any())
+            {
+                <p class="text-success small mb-0"><i class="bi bi-check-circle-fill me-1"></i> Account is in good standing with zero unpaid fines.</p>
+            }
+            else
+            {
+                <div class="list-group list-group-flush small">
+                    @foreach (var fine in unpaidFines)
+                    {
+                        <div class="list-group-item px-0 py-2 d-flex justify-content-between align-items-center">
+                            <div>
+                                <div class="fw-bold text-danger">$@fine.Amount.ToString("F2")</div>
+                                <div class="text-muted">@fine.CalculationDetails</div>
+                            </div>
+                            <form asp-controller="Loans" asp-action="PayFine" asp-route-id="@fine.Id" method="post" class="d-inline">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn-sm btn-outline-success py-1">
+                                    <i class="bi bi-cash me-1"></i> Collect
+                                </button>
+                            </form>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Active & Past Loans -->
+    <div class="col-12 col-lg-8">
+        <!-- Currently Active Loans -->
+        <div class="card-custom p-4 mb-4">
+            <h5 class="fw-bold border-bottom pb-2 mb-3">
+                <i class="bi bi-clock-history me-1 text-primary"></i> Currently Checked Out Items (@activeLoans.Count)
+            </h5>
+
+            @if (!activeLoans.Any())
+            {
+                <p class="text-muted text-center py-3">No active loans currently checked out.</p>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-custom align-middle">
+                        <thead>
+                            <tr>
+                                <th>Item</th>
+                                <th>Borrowed</th>
+                                <th>Due Date</th>
+                                <th>Status</th>
+                                <th class="text-end">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var loan in activeLoans)
+                            {
+                                var isOverdue = loan.DueDate < DateTime.UtcNow;
+                                <tr>
+                                    <td>
+                                        <div class="fw-bold text-dark">@loan.Item?.Name</div>
+                                        <span class="badge-code">@loan.Item?.LibraryCode</span>
+                                    </td>
+                                    <td>@loan.BorrowDate.ToString("d MMM yyyy")</td>
+                                    <td>
+                                        <span class="@(isOverdue ? "text-danger fw-bold" : "text-dark")">
+                                            @loan.DueDate.ToString("d MMM yyyy")
+                                        </span>
+                                    </td>
+                                    <td>
+                                        @if (isOverdue)
+                                        {
+                                            <span class="badge bg-danger">Overdue</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-primary">Active</span>
+                                        }
+                                    </td>
+                                    <td class="text-end">
+                                        <a asp-controller="Loans" asp-action="Return" asp-route-id="@loan.Id" class="btn btn-sm btn-outline-success">
+                                            <i class="bi bi-box-arrow-in-left me-1"></i> Return Item
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+
+        <!-- Historic Returned Loans -->
+        <div class="card-custom p-4">
+            <h5 class="fw-bold border-bottom pb-2 mb-3 text-muted">
+                <i class="bi bi-archive me-1"></i> Completed Loan History (@pastLoans.Count)
+            </h5>
+
+            @if (!pastLoans.Any())
+            {
+                <p class="text-muted text-center py-2">No past loan records.</p>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-sm table-custom align-middle">
+                        <thead>
+                            <tr>
+                                <th>Item</th>
+                                <th>Borrowed</th>
+                                <th>Returned</th>
+                                <th>Fine Incurred</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var loan in pastLoans.OrderByDescending(l => l.ReturnDate))
+                            {
+                                <tr>
+                                    <td>
+                                        <span class="fw-semibold">@loan.Item?.Name</span>
+                                        <span class="badge badge-type ms-1">@loan.Item?.LibraryCode</span>
+                                    </td>
+                                    <td>@loan.BorrowDate.ToString("d MMM yyyy")</td>
+                                    <td>@(loan.ReturnDate.HasValue ? loan.ReturnDate.Value.ToString("d MMM yyyy") : "-")</td>
+                                    <td>
+                                        @if (loan.Fine != null)
+                                        {
+                                            <span class="text-danger fw-bold">$@loan.Fine.Amount.ToString("F2") (@(loan.Fine.IsPaid ? "Paid" : "Unpaid"))</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-success">$0.00</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+</div>
