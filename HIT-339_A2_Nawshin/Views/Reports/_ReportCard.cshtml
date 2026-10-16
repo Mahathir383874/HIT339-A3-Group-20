@@ -1,0 +1,75 @@
+@model Bibliotheca.Models.ViewModels.ReportCardViewModel
+@{
+    const int PreviewRowLimit = 25;
+    var anchor = Model.Kind.ToLowerInvariant();
+}
+
+<div class="card-custom p-3 p-md-4 mb-4" id="@anchor">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-start gap-3 mb-3">
+        <div>
+            <h4 class="fw-bold mb-0"><i class="bi @Model.Icon me-2 text-primary"></i>@Model.Document.Title</h4>
+            <p class="text-muted small mb-0">@Model.Document.Subtitle</p>
+        </div>
+        <div class="d-flex gap-2 flex-shrink-0">
+            <a class="btn btn-sm btn-outline-custom" asp-action="Export" asp-route-report="@Model.Kind" asp-route-format="csv"
+               asp-route-from="@(Model.UsesDateFilter ? Model.From : null)" asp-route-to="@(Model.UsesDateFilter ? Model.To : null)">
+                <i class="bi bi-filetype-csv me-1"></i> Export CSV
+            </a>
+            <a class="btn btn-sm btn-primary-custom" asp-action="Export" asp-route-report="@Model.Kind" asp-route-format="pdf"
+               asp-route-from="@(Model.UsesDateFilter ? Model.From : null)" asp-route-to="@(Model.UsesDateFilter ? Model.To : null)">
+                <i class="bi bi-file-earmark-pdf me-1"></i> Export PDF
+            </a>
+        </div>
+    </div>
+
+    <div class="row g-2 mb-4">
+        @foreach (var metric in Model.Document.Summary)
+        {
+            <div class="col-6 col-md-4 col-xl-3">
+                <div class="border rounded-3 p-2 h-100">
+                    <div class="fw-bold">@metric.Value</div>
+                    <div class="text-muted small">@metric.Label</div>
+                </div>
+            </div>
+        }
+    </div>
+
+    @foreach (var part in Model.Document.Sections)
+    {
+        <h6 class="fw-bold mt-3">@part.Heading</h6>
+        @if (part.Rows.Count == 0)
+        {
+            <p class="text-muted small fst-italic">@part.EmptyMessage</p>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-sm table-hover align-middle">
+                    <thead>
+                        <tr>
+                            @foreach (var column in part.Columns)
+                            {
+                                <th>@column</th>
+                            }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in part.Rows.Take(PreviewRowLimit))
+                        {
+                            <tr>
+                                @foreach (var cell in row)
+                                {
+                                    <td>@cell</td>
+                                }
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            @if (part.Rows.Count > PreviewRowLimit)
+            {
+                <p class="text-muted small">Showing the first @PreviewRowLimit of @part.Rows.Count rows. Export the report to see every row.</p>
+            }
+        }
+    }
+</div>
