@@ -5,6 +5,7 @@ using Bibliotheca.Data;
 using Bibliotheca.Models.Entities;
 using Bibliotheca.Models.Enums;
 using Bibliotheca.Models.ViewModels;
+using Bibliotheca.Services;
 
 namespace Bibliotheca.Controllers
 {
@@ -30,10 +31,7 @@ namespace Bibliotheca.Controllers
             IQueryable<Item> query = _context.Items;
 
             // 1. Filter by Category
-            if (!string.IsNullOrEmpty(category) && category != "All")
-            {
-                query = query.Where(i => i.ItemType == category);
-            }
+            query = query.ApplyCategory(category);
 
             // 2. Filter by Status
             if (!string.IsNullOrEmpty(statusFilter) && statusFilter != "All")
@@ -44,20 +42,8 @@ namespace Bibliotheca.Controllers
                 }
             }
 
-            // 3. Search Term Keyword Filtering
-            if (!string.IsNullOrWhiteSpace(searchTerm))
-            {
-                var term = searchTerm.Trim().ToLower();
-                query = query.Where(i =>
-                    i.Name.ToLower().Contains(term) ||
-                    (i.Description != null && i.Description.ToLower().Contains(term)) ||
-                    i.LibraryCode.ToLower().Contains(term) ||
-                    (i is Book && ((Book)i).Author.ToLower().Contains(term)) ||
-                    (i is Book && ((Book)i).Genre.ToLower().Contains(term)) ||
-                    (i is Music && ((Music)i).Artist.ToLower().Contains(term)) ||
-                    (i is Toy && ((Toy)i).ToyType.ToLower().Contains(term)) ||
-                    (i is Toy && ((Toy)i).Manufacturer != null && ((Toy)i).Manufacturer!.ToLower().Contains(term)));
-            }
+            // 3. Search Term Keyword Filtering (shared with the Self-Service Kiosk)
+            query = query.ApplyKeywordSearch(searchTerm);
 
             // 4. Specific Genre Filter
             if (!string.IsNullOrWhiteSpace(genre))

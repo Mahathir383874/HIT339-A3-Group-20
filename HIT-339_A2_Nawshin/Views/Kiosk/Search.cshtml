@@ -1,0 +1,104 @@
+@model KioskSearchViewModel
+@using Bibliotheca.Services
+@{
+    ViewData["Title"] = "Search catalogue";
+    var categories = new (string Value, string Label, string Icon)[]
+    {
+        ("All", "Everything", "bi-grid"),
+        ("Book", "Books", "bi-book"),
+        ("Music", "Music", "bi-disc"),
+        ("Toy", "Toys & games", "bi-puzzle")
+    };
+}
+
+<div class="kiosk-page-head">
+    <div>
+        <h1 class="kiosk-title">Search the catalogue</h1>
+        <p class="kiosk-lead mb-0">Search by title, author, artist or category.</p>
+    </div>
+    @if (!Model.IsPatronIdentified)
+    {
+        <a asp-action="Index" class="kiosk-btn kiosk-btn-primary kiosk-btn-lg">
+            <i class="bi bi-person-vcard" aria-hidden="true"></i> Scan card to borrow
+        </a>
+    }
+</div>
+
+<form asp-action="Search" method="get" class="kiosk-card kiosk-search-form" role="search" autocomplete="off">
+    <label for="q" class="kiosk-label">What are you looking for?</label>
+    <div class="kiosk-search-row">
+        <input id="q" name="q" value="@Model.Query" class="kiosk-input" placeholder="e.g. Tolkien, jazz, board game" autofocus="@(!Model.HasSearched)" />
+        <button type="submit" class="kiosk-btn kiosk-btn-primary kiosk-btn-lg">
+            <i class="bi bi-search" aria-hidden="true"></i> Search
+        </button>
+    </div>
+
+    <fieldset class="kiosk-chips">
+        <legend class="kiosk-label">Category</legend>
+        @foreach (var c in categories)
+        {
+            <input type="radio" class="btn-check" name="category" id="cat-@c.Value" value="@c.Value" checked="@(Model.Category == c.Value)" data-autosubmit />
+            <label class="kiosk-chip" for="cat-@c.Value"><i class="bi @c.Icon" aria-hidden="true"></i> @c.Label</label>
+        }
+        <input type="checkbox" class="btn-check" name="availableOnly" id="availableOnly" value="true" checked="@Model.AvailableOnly" data-autosubmit />
+        <label class="kiosk-chip" for="availableOnly"><i class="bi bi-check2-circle" aria-hidden="true"></i> Available now only</label>
+    </fieldset>
+</form>
+
+@if (Model.HasSearched)
+{
+    <p class="kiosk-result-count" role="status">
+        @if (Model.Results.Count == 0)
+        {
+            <text>No items matched your search. Try a different word or category.</text>
+        }
+        else
+        {
+            <text>@Model.Results.Count item@(Model.Results.Count == 1 ? "" : "s") found@(Model.ResultsTruncated ? " (showing the first " + KioskSearchViewModel.MaxResults + " — try a more specific search)" : "").</text>
+        }
+    </p>
+
+    <ul class="kiosk-results">
+        @foreach (var item in Model.Results)
+        {
+            var available = item.Status == ItemStatus.Available;
+            <li class="kiosk-result">
+                <div class="kiosk-result-img" aria-hidden="true">
+                    @if (!string.IsNullOrEmpty(item.ImageUrl))
+                    {
+                        <img src="@item.ImageUrl" alt="" loading="lazy" onerror="this.remove()" />
+                    }
+                    <i class="bi @(item.ItemType == "Music" ? "bi-disc" : item.ItemType == "Toy" ? "bi-puzzle" : "bi-book")"></i>
+                </div>
+                <div class="kiosk-result-body">
+                    <span class="kiosk-item-name">@item.Name</span>
+                    <span class="kiosk-item-meta">@item.CreatorLine()</span>
+                    <span class="kiosk-item-meta">@item.CategoryLine() · @item.LibraryCode</span>
+                </div>
+                <div class="kiosk-result-action">
+                    @if (available)
+                    {
+                        <span class="kiosk-badge kiosk-badge-ok"><i class="bi bi-check-circle-fill" aria-hidden="true"></i> Available</span>
+                        @if (Model.IsPatronIdentified)
+                        {
+                            <a asp-action="Checkout" asp-route-code="@item.LibraryCode" class="kiosk-btn kiosk-btn-primary">
+                                Borrow
+                            </a>
+                        }
+                    }
+                    else
+                    {
+                        <span class="kiosk-badge kiosk-badge-neutral">@(item.Status == ItemStatus.Borrowed ? "On loan" : "Unavailable")</span>
+                    }
+                </div>
+            </li>
+        }
+    </ul>
+}
+else
+{
+    <div class="kiosk-card kiosk-empty-state">
+        <i class="bi bi-lightbulb" aria-hidden="true"></i>
+        <p>Type a title, author or artist, or tap a category to browse.</p>
+    </div>
+}

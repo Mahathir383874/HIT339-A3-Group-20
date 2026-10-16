@@ -1,0 +1,93 @@
+@model KioskCheckoutViewModel
+@using Microsoft.Extensions.Options
+@using Bibliotheca.Services
+@inject IOptions<KioskOptions> KioskSettings
+@{
+    ViewData["Title"] = "Borrow an item";
+    var kiosk = KioskSettings.Value;
+    var showScanner = Model.Item == null || Model.ErrorMessage != null;
+}
+
+<div class="kiosk-page-head">
+    <div>
+        <h1 class="kiosk-title">Borrow an item</h1>
+        <p class="kiosk-lead mb-0">Scan the barcode label on the item, or type its library code.</p>
+    </div>
+    <a asp-action="Account" class="kiosk-btn kiosk-btn-outline kiosk-btn-lg">
+        <i class="bi bi-arrow-left" aria-hidden="true"></i> Back to my account
+    </a>
+</div>
+
+@if (Model.ErrorMessage != null)
+{
+    <div class="kiosk-alert kiosk-alert-error" role="alert">
+        <i class="bi bi-x-octagon-fill" aria-hidden="true"></i> <span>@Model.ErrorMessage</span>
+    </div>
+}
+
+<div class="kiosk-grid-2">
+    @if (Model.Item != null)
+    {
+        var item = Model.Item;
+        <section class="kiosk-card kiosk-confirm @(Model.CanConfirm ? "" : "is-blocked")" aria-labelledby="confirm-heading">
+            <h2 id="confirm-heading" class="kiosk-h2">@(Model.CanConfirm ? "Please confirm" : "Item details")</h2>
+            <div class="kiosk-confirm-item">
+                <div class="kiosk-result-img kiosk-result-img-lg" aria-hidden="true">
+                    @if (!string.IsNullOrEmpty(item.ImageUrl))
+                    {
+                        <img src="@item.ImageUrl" alt="" onerror="this.remove()" />
+                    }
+                    <i class="bi @(item.ItemType == "Music" ? "bi-disc" : item.ItemType == "Toy" ? "bi-puzzle" : "bi-book")"></i>
+                </div>
+                <div>
+                    <span class="kiosk-item-name kiosk-item-name-lg">@item.Name</span>
+                    <span class="kiosk-item-meta">@item.CreatorLine()</span>
+                    <span class="kiosk-item-meta">@item.CategoryLine() · @item.LibraryCode</span>
+                </div>
+            </div>
+
+            @if (Model.CanConfirm)
+            {
+                <p class="kiosk-due">
+                    <i class="bi bi-calendar-check" aria-hidden="true"></i>
+                    Due back on <strong>@Model.ProposedDueDate.ToLocalTime().ToString("dddd d MMMM yyyy")</strong> (@kiosk.LoanDays days)
+                </p>
+                <form asp-action="Checkout" method="post" class="kiosk-actions-row">
+                    <input type="hidden" asp-for="LibraryCode" />
+                    <button type="submit" class="kiosk-btn kiosk-btn-success kiosk-btn-xl" data-once>
+                        <i class="bi bi-check2-circle" aria-hidden="true"></i> Confirm and borrow
+                    </button>
+                    <a asp-action="Checkout" class="kiosk-btn kiosk-btn-outline kiosk-btn-lg">Cancel</a>
+                </form>
+            }
+        </section>
+    }
+
+    @if (showScanner)
+    {
+        <section class="kiosk-card" aria-labelledby="scan-heading">
+            <h2 id="scan-heading" class="kiosk-h2"><i class="bi bi-upc-scan" aria-hidden="true"></i> @(Model.Item == null && Model.ErrorMessage == null ? "Scan the item" : "Try another item")</h2>
+            <form asp-action="Checkout" method="get" autocomplete="off" class="kiosk-form" data-kiosk-scan-form>
+                <label for="code" class="kiosk-label">Item library code</label>
+                <input id="code" name="code" class="kiosk-input" placeholder="e.g. BOK-1001" autofocus
+                       autocapitalize="characters" spellcheck="false" aria-describedby="code-help" />
+                <p id="code-help" class="kiosk-help">The code is printed on the label, like BOK-1001, MUS-2001 or TOY-3001.</p>
+
+                <div class="kiosk-keypad" data-target="code" data-prefixes="BOK-,MUS-,TOY-" aria-label="On-screen keypad"></div>
+
+                <div class="kiosk-actions-row">
+                    @if (kiosk.EnableCameraScan)
+                    {
+                        <button type="button" class="kiosk-btn kiosk-btn-outline kiosk-btn-lg" data-camera-scan="code">
+                            <i class="bi bi-qr-code-scan" aria-hidden="true"></i> Scan with camera
+                        </button>
+                    }
+                    <button type="submit" class="kiosk-btn kiosk-btn-primary kiosk-btn-lg">
+                        <i class="bi bi-search" aria-hidden="true"></i> Find item
+                    </button>
+                </div>
+            </form>
+            <p class="kiosk-help mt-3">Don't know the code? <a asp-action="Search">Search the catalogue</a> and tap <strong>Borrow</strong>.</p>
+        </section>
+    }
+</div>

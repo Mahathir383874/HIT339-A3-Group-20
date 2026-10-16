@@ -6540,23 +6540,23 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\Olaf\\.nuget\\packages\\": {},
+    "C:\\Users\\Student\\.nuget\\packages\\": {},
     "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "F:\\Nawshin Nawar Tanisha_S383856_HIT-339_A2[Bibliotheca]\\HIT-339_A2_Nawshin\\Bibliotheca.csproj",
+      "projectUniqueName": "C:\\Users\\Student\\Desktop\\HIT339\\Bibliotheca_Kiosk_Setup_Achintha\\Bibliotheca\\HIT-339_A2_Nawshin\\Bibliotheca.csproj",
       "projectName": "Bibliotheca",
-      "projectPath": "F:\\Nawshin Nawar Tanisha_S383856_HIT-339_A2[Bibliotheca]\\HIT-339_A2_Nawshin\\Bibliotheca.csproj",
-      "packagesPath": "C:\\Users\\Olaf\\.nuget\\packages\\",
-      "outputPath": "F:\\Nawshin Nawar Tanisha_S383856_HIT-339_A2[Bibliotheca]\\HIT-339_A2_Nawshin\\obj\\",
+      "projectPath": "C:\\Users\\Student\\Desktop\\HIT339\\Bibliotheca_Kiosk_Setup_Achintha\\Bibliotheca\\HIT-339_A2_Nawshin\\Bibliotheca.csproj",
+      "packagesPath": "C:\\Users\\Student\\.nuget\\packages\\",
+      "outputPath": "C:\\Users\\Student\\Desktop\\HIT339\\Bibliotheca_Kiosk_Setup_Achintha\\Bibliotheca\\HIT-339_A2_Nawshin\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
       ],
       "configFilePaths": [
-        "C:\\Users\\Olaf\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Users\\Student\\AppData\\Roaming\\NuGet\\NuGet.Config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
       ],
@@ -7074,6 +7074,26 @@
       "warningLevel": 1,
       "message": "Package 'NuGet.Protocol' 6.12.1 has a known low severity vulnerability, https://github.com/advisories/GHSA-g4vj-cjjj-v7hg",
       "libraryId": "NuGet.Protocol",
+      "targetGraphs": [
+        "net10.0"
+      ]
+    },
+    {
+      "code": "NU1902",
+      "level": "Warning",
+      "warningLevel": 1,
+      "message": "Package 'System.Security.Cryptography.Pkcs' 9.0.11 has a known moderate severity vulnerability, https://github.com/advisories/GHSA-2fmv-rv2c-59x7",
+      "libraryId": "System.Security.Cryptography.Pkcs",
+      "targetGraphs": [
+        "net10.0"
+      ]
+    },
+    {
+      "code": "NU1903",
+      "level": "Warning",
+      "warningLevel": 1,
+      "message": "Package 'System.Security.Cryptography.Pkcs' 9.0.11 has a known high severity vulnerability, https://github.com/advisories/GHSA-846f-f764-76mx",
+      "libraryId": "System.Security.Cryptography.Pkcs",
       "targetGraphs": [
         "net10.0"
       ]

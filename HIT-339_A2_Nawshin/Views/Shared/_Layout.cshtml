@@ -44,6 +44,13 @@
                             </a>
                         </li>
 
+                        <!-- Public Self-Service Kiosk (opens the touch-friendly kiosk UI) -->
+                        <li class="nav-item">
+                            <a class="nav-link" asp-controller="Kiosk" asp-action="Index">
+                                <i class="bi bi-display me-1"></i> Self-Service Kiosk
+                            </a>
+                        </li>
+
                         @if (SignInManager.IsSignedIn(User))
                         {
                             @if (User.IsInRole("Admin"))
@@ -75,6 +82,8 @@
                                         <li><hr class="dropdown-divider"></li>
                                         <li><a class="dropdown-item" asp-controller="Borrowers" asp-action="Index"><i class="bi bi-people me-2"></i>Borrower Profiles</a></li>
                                         <li><a class="dropdown-item" asp-controller="Borrowers" asp-action="Create"><i class="bi bi-person-plus me-2 text-success"></i>Register New Borrower</a></li>
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li><a class="dropdown-item" asp-controller="Kiosk" asp-action="TestCards"><i class="bi bi-qr-code me-2 text-primary"></i>Kiosk Test Cards (QR)</a></li>
                                     </ul>
                                 </li>
                             }

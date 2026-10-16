@@ -1,0 +1,157 @@
+@model KioskAccountViewModel
+@{
+    ViewData["Title"] = "My account";
+    string Local(DateTime utc) => utc.ToLocalTime().ToString("ddd d MMM yyyy");
+}
+
+<div class="kiosk-page-head">
+    <div>
+        <h1 class="kiosk-title">Hello, @Model.FirstName</h1>
+        <p class="kiosk-lead mb-0">Card @Model.MaskedCardNumber</p>
+    </div>
+    <div class="kiosk-actions-row">
+        @if (Model.CanBorrow)
+        {
+            <a asp-action="Checkout" class="kiosk-btn kiosk-btn-primary kiosk-btn-lg">
+                <i class="bi bi-upc-scan" aria-hidden="true"></i> Borrow an item
+            </a>
+        }
+        <a asp-action="Search" class="kiosk-btn kiosk-btn-outline kiosk-btn-lg">
+            <i class="bi bi-search" aria-hidden="true"></i> Search catalogue
+        </a>
+    </div>
+</div>
+
+@if (!Model.CanBorrow && Model.BorrowBlockedReason != null)
+{
+    <div class="kiosk-alert kiosk-alert-warning" role="status">
+        <i class="bi bi-exclamation-circle-fill" aria-hidden="true"></i>
+        <span><strong>Self-service borrowing is paused.</strong> @Model.BorrowBlockedReason</span>
+    </div>
+}
+
+<!-- Summary tiles -->
+<div class="kiosk-stats" role="list">
+    <div class="kiosk-stat" role="listitem">
+        <span class="kiosk-stat-value">@Model.Loans.Count</span>
+        <span class="kiosk-stat-label">Items on loan <small>(limit @Model.MaxActiveLoans)</small></span>
+    </div>
+    <div class="kiosk-stat @(Model.Loans.Any(l => l.IsOverdue) ? "is-danger" : "")" role="listitem">
+        <span class="kiosk-stat-value">@Model.Loans.Count(l => l.IsOverdue)</span>
+        <span class="kiosk-stat-label">Overdue</span>
+    </div>
+    <div class="kiosk-stat @(Model.UnpaidFinesTotal > 0 ? "is-warning" : "")" role="listitem">
+        <span class="kiosk-stat-value">$@Model.UnpaidFinesTotal.ToString("F2")</span>
+        <span class="kiosk-stat-label">Unpaid fines</span>
+    </div>
+    <div class="kiosk-stat" role="listitem">
+        <span class="kiosk-stat-value">@(Model.ReservationsEnabled ? Model.Reservations.Count.ToString() : "–")</span>
+        <span class="kiosk-stat-label">Reservations</span>
+    </div>
+</div>
+
+<div class="kiosk-grid-2">
+    <!-- Current loans -->
+    <section class="kiosk-card" aria-labelledby="loans-heading">
+        <h2 id="loans-heading" class="kiosk-h2"><i class="bi bi-journal-bookmark" aria-hidden="true"></i> Items on loan</h2>
+
+        @if (!Model.Loans.Any())
+        {
+            <p class="kiosk-empty">You have nothing on loan right now.</p>
+        }
+        else
+        {
+            <ul class="kiosk-list">
+                @foreach (var loan in Model.Loans)
+                {
+                    <li class="kiosk-list-item @(loan.IsOverdue ? "is-overdue" : "")">
+                        <div class="kiosk-list-main">
+                            <span class="kiosk-item-name">@loan.ItemName</span>
+                            <span class="kiosk-item-meta">@loan.ItemType · @loan.LibraryCode</span>
+                        </div>
+                        <div class="kiosk-list-side">
+                            @if (loan.IsOverdue)
+                            {
+                                <span class="kiosk-badge kiosk-badge-danger">Overdue @loan.DaysOverdue day@(loan.DaysOverdue == 1 ? "" : "s")</span>
+                                <span class="kiosk-item-meta">Was due @Local(loan.DueDate)</span>
+                                <span class="kiosk-item-meta">Fine so far: <strong>$@loan.AccruingFine.ToString("F2")</strong></span>
+                            }
+                            else
+                            {
+                                <span class="kiosk-badge @(loan.DaysUntilDue <= 3 ? "kiosk-badge-warning" : "kiosk-badge-ok")">
+                                    Due @Local(loan.DueDate)
+                                </span>
+                                <span class="kiosk-item-meta">@(loan.DaysUntilDue <= 1 ? "Due within a day" : $"{loan.DaysUntilDue} days left")</span>
+                            }
+                        </div>
+                    </li>
+                }
+            </ul>
+            @if (Model.AccruingFinesTotal > 0)
+            {
+                <p class="kiosk-help">Overdue items build up a fine of $1.00 per day until returned. Fines so far: <strong>$@Model.AccruingFinesTotal.ToString("F2")</strong>.</p>
+            }
+        }
+    </section>
+
+    <div class="kiosk-stack">
+        <!-- Fines -->
+        <section class="kiosk-card" aria-labelledby="fines-heading">
+            <h2 id="fines-heading" class="kiosk-h2"><i class="bi bi-cash-coin" aria-hidden="true"></i> Unpaid fines</h2>
+            @if (!Model.UnpaidFines.Any())
+            {
+                <p class="kiosk-empty">No unpaid fines. Thank you!</p>
+            }
+            else
+            {
+                <ul class="kiosk-list">
+                    @foreach (var fine in Model.UnpaidFines)
+                    {
+                        <li class="kiosk-list-item">
+                            <div class="kiosk-list-main">
+                                <span class="kiosk-item-name">@fine.ItemName</span>
+                                <span class="kiosk-item-meta">@fine.DaysLate day@(fine.DaysLate == 1 ? "" : "s") late · @Local(fine.CreatedDate)</span>
+                            </div>
+                            <div class="kiosk-list-side"><span class="kiosk-amount">$@fine.Amount.ToString("F2")</span></div>
+                        </li>
+                    }
+                </ul>
+                <p class="kiosk-help">Fines can be paid at the front desk.</p>
+            }
+        </section>
+
+        <!-- Reservations (filled in by the reservation module when it is connected) -->
+        <section class="kiosk-card" aria-labelledby="holds-heading">
+            <h2 id="holds-heading" class="kiosk-h2"><i class="bi bi-bookmark-star" aria-hidden="true"></i> Reservations</h2>
+            @if (!Model.ReservationsEnabled)
+            {
+                <p class="kiosk-empty">Reservations aren't available at this kiosk yet. Staff at the front desk can help you place a hold.</p>
+            }
+            else if (!Model.Reservations.Any())
+            {
+                <p class="kiosk-empty">You have no reservations.</p>
+            }
+            else
+            {
+                <ul class="kiosk-list">
+                    @foreach (var r in Model.Reservations)
+                    {
+                        <li class="kiosk-list-item">
+                            <div class="kiosk-list-main">
+                                <span class="kiosk-item-name">@r.ItemName</span>
+                                <span class="kiosk-item-meta">@r.LibraryCode@(r.PickupBranch != null ? $" · Pick up at {r.PickupBranch}" : "")</span>
+                            </div>
+                            <div class="kiosk-list-side">
+                                <span class="kiosk-badge @(r.Status == "Ready" ? "kiosk-badge-ok" : "kiosk-badge-neutral")">@r.Status</span>
+                                @if (r.QueuePosition.HasValue && r.Status != "Ready")
+                                {
+                                    <span class="kiosk-item-meta">Position @r.QueuePosition in queue</span>
+                                }
+                            </div>
+                        </li>
+                    }
+                </ul>
+            }
+        </section>
+    </div>
+</div>
