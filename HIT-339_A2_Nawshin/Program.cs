@@ -39,6 +39,22 @@ builder.Services.ConfigureApplicationCookie(options =>
 // 4. Add MVC Controllers and Views
 builder.Services.AddControllersWithViews();
 
+// 4a. [Moon] Public read-only API: OpenAPI document (only /api/ routes) and a GET-only CORS policy
+builder.Services.AddOpenApi(options =>
+{
+    options.ShouldInclude = description =>
+        description.RelativePath != null &&
+        description.RelativePath.StartsWith("api/", StringComparison.OrdinalIgnoreCase);
+});
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("PublicReadOnlyApi", policy =>
+        policy.AllowAnyOrigin()
+              .WithMethods("GET", "HEAD", "OPTIONS")
+              .AllowAnyHeader());
+});
+
 // 5. Shared circulation rules + Public Self-Service Kiosk (Achintha)
 builder.Services.AddScoped<ICirculationService, CirculationService>();
 builder.Services.Configure<KioskOptions>(builder.Configuration.GetSection(KioskOptions.SectionName));
@@ -90,8 +106,13 @@ app.UseRouting();
 
 app.UseSession(); // Required by the Self-Service Kiosk
 
+app.UseCors(); // [Moon] CORS for the public read-only API
+
 app.UseAuthentication();
 app.UseAuthorization();
+
+// [Moon] OpenAPI document for the public API, served at /openapi/v1.json (viewer: /api-docs.html)
+app.MapOpenApi();
 
 app.MapControllerRoute(
     name: "default",
