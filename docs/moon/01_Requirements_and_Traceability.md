@@ -1,6 +1,6 @@
 # Moon – Requirements, Acceptance Criteria and Traceability
 
-**Member:** Moon  
+**Member:** Mishkatuz Zannat Moon  
 **Main responsibility:** Read-only REST API, External Data Importer, Manager Analytics and Export  
 **Branches:** `feature/moon-api`, `feature/moon-import`, `feature/moon-analytics`  
 **Source of requirements:** Group Project brief, Part B (*Public API & Developer Endpoint*, *External Book/Media Data Importer*, *Expanded Manager Analytics & Export*) and the Work Distribution Guide, section 3.
